@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Receiver</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <header class="header">
+        <h1 class="header__title" data-i18n="kitchen">Cuisine</h1>
+        <div class="header__controls">
+            <button id="settings-btn" class="btn btn--secondary">
+                ⚙️ <span data-i18n="settings">Paramètres</span>
+            </button>
+            <div class="connection-status" id="connection-status">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Connexion...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="tables-grid" id="tables-grid">
+            <!-- Tables générées dynamiquement -->
+        </div>
+    </main>
+
+    <!-- Modal des paramètres -->
+    <div class="modal" id="settings-modal">
+        <div class="modal__content">
+            <h2 data-i18n="settings">Paramètres</h2>
+            
+            <div class="setting-group">
+                <label data-i18n="language">Langue :</label>
+                <select id="language-select">
+                    <option value="fr">Français</option>
+                    <option value="th">ไทย</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label data-i18n="gridSize">Taille de la grille :</label>
+                <div class="grid-controls">
+                    <input type="number" id="grid-cols" min="1" max="5" value="3">
+                    <span>×</span>
+                    <input type="number" id="grid-rows" min="1" max="5" value="3">
+                </div>
+            </div>
+
+            <div class="modal__actions">
+                <button id="settings-close" class="btn btn--primary" data-i18n="close">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script/i18n.js"></script>
+    <script src="script/state.js"></script>
+    <script src="script/ui.js"></script>
+    <script src="script/settings.js"></script>
+    <script src="script/websocket.js"></script>
+    
+    <script>
+        // Initialisation de l'application
+        document.addEventListener('DOMContentLoaded', async () => {
+            await I18n.init();
+            await Settings.init();
+            UI.init();
+            WebSocketManager.init();
+        });
+    </script>
+</body>
+</html> 

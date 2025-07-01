@@ -1,0 +1,42 @@
+{
+  "fr": {
+    "kitchen": "Cuisine",
+    "settings": "Paramètres",
+    "language": "Langue",
+    "gridSize": "Taille de la grille",
+    "close": "Fermer",
+    "todo": "À faire",
+    "done": "Fait",
+    "cancel": "Annuler",
+    "finish": "Terminer la table",
+    "total": "Total",
+    "noOrders": "Pas de commande",
+    "table": "Table",
+    "connecting": "Connexion...",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "connectionError": "Erreur de connexion",
+    "confirmCancel": "Confirmer l'annulation ?",
+    "confirmFinish": "Terminer cette table ?"
+  },
+  "th": {
+    "kitchen": "ครัว",
+    "settings": "การตั้งค่า",
+    "language": "ภาษา",
+    "gridSize": "ขนาดตาราง",
+    "close": "ปิด",
+    "todo": "กำลังทำ",
+    "done": "เสร็จแล้ว",
+    "cancel": "ยกเลิก",
+    "finish": "ปิดโต๊ะ",
+    "total": "รวม",
+    "noOrders": "ไม่มีออร์เดอร์",
+    "table": "โต๊ะ",
+    "connecting": "กำลังเชื่อมต่อ...",
+    "connected": "เชื่อมต่อแล้ว",
+    "disconnected": "ขาดการเชื่อมต่อ",
+    "connectionError": "ข้อผิดพลาดในการเชื่อมต่อ",
+    "confirmCancel": "ยืนยันการยกเลิก?",
+    "confirmFinish": "ปิดโต๊ะนี้?"
+  }
+} 
