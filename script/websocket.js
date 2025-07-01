@@ -101,6 +101,9 @@ const WebSocketManager = {
     if (data.action === 'remove') {
       // Suppression d'une commande
       this.handleOrderRemoval(data);
+    } else if (data.action === 'getState') {
+      // Demande d'état
+      this.handleGetState(data);
     } else {
       // Ajout d'une nouvelle commande
       this.handleOrderAddition(data);
@@ -113,59 +116,172 @@ const WebSocketManager = {
    * @returns {boolean} True si valide
    */
   isValidOrderMessage(data) {
-    // Vérifications de base
-    if (!data.orderId || !data.table || !data.timestamp) {
+    // Vérification de base : timestamp requis pour tous
+    if (!data.timestamp) {
       return false;
     }
 
-    // Pour les suppressions, on a juste besoin de orderId, table, timestamp et action
-    if (data.action === 'remove') {
+    // Pour les demandes d'état
+    if (data.action === 'getState') {
       return true;
     }
 
-    // Pour les ajouts, on a besoin de l'item complet
-    if (!data.item || !data.item.id || !data.item.price || !data.item.name) {
+    // Pour les autres messages, table est requis
+    if (!data.table) {
       return false;
     }
 
-    // Vérifier que name est un objet avec au moins fr ou th
-    if (typeof data.item.name !== 'object' || 
-        (!data.item.name.fr && !data.item.name.th)) {
-      return false;
+    // Pour les suppressions avec la nouvelle structure
+    if (data.action === 'remove') {
+      // Vérifier que l'item est présent et valide
+      if (!data.item || !data.item.id || !data.item.price || !data.item.name) {
+        return false;
+      }
+      // Vérifier que name est un objet avec au moins fr ou th
+      if (typeof data.item.name !== 'object' || 
+          (!data.item.name.fr && !data.item.name.th)) {
+        return false;
+      }
+      return true;
     }
 
-    return true;
+    // Pour les ajouts, vérifier la présence de orderId (ancien format) ou item (nouveau format)
+    if (data.orderId || data.item) {
+      // Si c'est un ajout, on a besoin de l'item complet
+      if (!data.item || !data.item.id || !data.item.price || !data.item.name) {
+        return false;
+      }
+
+      // Vérifier que name est un objet avec au moins fr ou th
+      if (typeof data.item.name !== 'object' || 
+          (!data.item.name.fr && !data.item.name.th)) {
+        return false;
+      }
+      return true;
+    }
+
+    return false;
   },
 
   /**
-   * Gère l'ajout d'une nouvelle commande
-   * @param {Object} data - Données de la commande
+   * Gère l'ajout d'un nouvel article
    */
   handleOrderAddition(data) {
-    console.log('Ajout de commande:', data.orderId, 'Table:', data.table);
+    console.log('Ajout article:', data.item.name, 'Table:', data.table);
     
-    // Ajouter la commande au state
-    State.addOrder(data);
+    // Ajouter l'article au state - l'UI se synchronisera automatiquement
+    State.addItem(data);
     
-    // Animation visuelle optionnelle
-    setTimeout(() => {
-      UI.animateNewOrder(data.orderId);
-    }, 100);
+    console.log('✅ Article ajouté au State, synchronisation UI automatique en cours...');
+    
+    // Renvoyer l'état mis à jour
+    this.sendUpdatedState();
   },
 
   /**
-   * Gère la suppression d'une commande
-   * @param {Object} data - Données de suppression
+   * Gère la suppression d'un article via WebSocket
    */
   handleOrderRemoval(data) {
-    console.log('Suppression de commande:', data.orderId);
+    console.log('Suppression article via WebSocket:', data.item.name, 'Table:', data.table);
     
-    // Supprimer la commande du state
-    const success = State.removeOrder(data.orderId);
+    // Déterminer le nom de l'article dans la langue actuelle
+    const currentLang = I18n.getCurrentLanguage();
+    const itemName = data.item.name[currentLang] || data.item.name.fr || data.item.name.th;
     
-    if (!success) {
-      console.warn('Impossible de supprimer la commande:', data.orderId);
+    // Supprimer l'article du state - l'UI se synchronisera automatiquement
+    const success = State.removeItemByNameAndTable(itemName, data.table);
+    
+    if (success) {
+      console.log('✅ Article supprimé avec succès via WebSocket, synchronisation UI automatique en cours...');
+      
+      // Renvoyer l'état mis à jour
+      this.sendUpdatedState();
+    } else {
+      console.warn('❌ Échec de la suppression via WebSocket:', itemName, 'table:', data.table);
     }
+  },
+
+  /**
+   * Gère la demande d'état via WebSocket
+   */
+  handleGetState(data) {
+    console.log('Demande d\'état reçue, timestamp:', data.timestamp);
+    
+    // Générer l'état au format demandé
+    const stateResponse = this.generateStateResponse();
+    
+    // Envoyer la réponse
+    this.sendState(stateResponse);
+  },
+
+  /**
+   * Génère la réponse d'état au format demandé
+   */
+  generateStateResponse() {
+    const allItems = State.data.orders || [];
+    
+    // Grouper les items par table et timestamp pour créer des orderId
+    const orderGroups = new Map();
+    
+    allItems.forEach(item => {
+      // Créer un orderId basé sur table + timestamp
+      const orderId = `${item.table}_${item.timestamp}`;
+      
+      if (!orderGroups.has(orderId)) {
+        orderGroups.set(orderId, {
+          orderId: orderId,
+          table: item.table,
+          timestamp: item.timestamp,
+          items: []
+        });
+      }
+      
+      // Ajouter l'item à ce groupe
+      orderGroups.get(orderId).items.push({
+        id: item.item.id,
+        price: item.item.price,
+        name: item.item.name,
+        status: item.status
+      });
+    });
+    
+    // Convertir en array
+    const orders = Array.from(orderGroups.values());
+    
+    console.log(`Génération état: ${orders.length} commandes, ${allItems.length} items au total`);
+    
+    return {
+      orders: orders
+    };
+  },
+
+  /**
+   * Envoie l'état via WebSocket
+   */
+  sendState(stateData) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('Impossible d\'envoyer l\'état: WebSocket non connecté');
+      return false;
+    }
+    
+    try {
+      const message = JSON.stringify(stateData);
+      this.socket.send(message);
+      console.log('✅ État envoyé:', stateData);
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de l\'état:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Génère et envoie l'état mis à jour après une modification
+   */
+  sendUpdatedState() {
+    const stateResponse = this.generateStateResponse();
+    this.sendState(stateResponse);
+    console.log('🔄 État mis à jour envoyé automatiquement');
   },
 
   /**

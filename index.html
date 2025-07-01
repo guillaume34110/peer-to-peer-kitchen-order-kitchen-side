@@ -66,6 +66,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await I18n.init();
             await Settings.init();
+            State.init();
             UI.init();
             WebSocketManager.init();
         });

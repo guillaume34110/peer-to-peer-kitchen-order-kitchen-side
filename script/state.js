@@ -1,11 +1,13 @@
 /**
- * Module de gestion d'état des commandes
- * Stocke et manipule les orders en mémoire
+ * Module de gestion d'état des commandes - VERSION SIMPLE
  */
 const State = {
-  orders: new Map(), // Map<orderId, Order>
-  tableOrders: new Map(), // Map<tableNumber, Set<orderId>>
+  // État simple = juste un objet JavaScript
+  data: {
+    orders: []       // Array simple d'orders avec orderId inclus - PAS BESOIN DE TABLES !
+  },
   listeners: new Set(),
+  STORAGE_KEY: 'kitchen-receiver-state',
 
   /**
    * Structure d'un Order:
@@ -21,6 +23,71 @@ const State = {
    *   status: 'todo' | 'done'
    * }
    */
+
+  /**
+   * Initialise le state depuis localStorage
+   */
+  init() {
+    this.loadFromStorage();
+    console.log('State initialisé avec', this.data.orders.length, 'commandes');
+  },
+
+  /**
+   * Sauvegarde simple dans localStorage
+   */
+  saveToStorage() {
+    try {
+      const saveData = {
+        ...this.data,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(saveData));
+      console.log('State sauvegardé:', this.data.orders.length, 'commandes');
+    } catch (error) {
+      console.error('Erreur sauvegarde:', error);
+    }
+  },
+
+  /**
+   * Chargement simple depuis localStorage
+   */
+  loadFromStorage() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const loadedData = JSON.parse(stored);
+        
+        // FORCER orders à être un array
+        if (Array.isArray(loadedData.orders)) {
+          this.data.orders = loadedData.orders;
+        } else {
+          console.warn('Format localStorage invalide, reset à []');
+          this.data.orders = [];
+        }
+        
+        console.log('State chargé:', this.data.orders.length, 'commandes');
+        
+        if (this.data.orders.length > 0) {
+          this.notifyListeners('stateLoaded', this.data);
+        }
+      } else {
+        // Pas de storage = array vide
+        this.data.orders = [];
+      }
+    } catch (error) {
+      console.error('Erreur chargement:', error);
+      this.data = { orders: [] };
+    }
+  },
+
+  /**
+   * Vide le localStorage
+   */
+  clearStorage() {
+    localStorage.removeItem(this.STORAGE_KEY);
+    this.data = { orders: [] };
+    console.log('Storage vidé');
+  },
 
   /**
    * Ajoute un listener pour les changements d'état
@@ -54,160 +121,138 @@ const State = {
   },
 
   /**
-   * Ajoute ou met à jour une commande
-   * @param {Object} orderData - Données de la commande
+   * Ajoute un nouvel article
    */
-  addOrder(orderData) {
-    const order = {
-      orderId: orderData.orderId,
-      table: orderData.table,
-      timestamp: orderData.timestamp,
-      item: orderData.item,
+  addItem(itemData) {
+    const item = {
+      table: itemData.table,
+      timestamp: itemData.timestamp || Date.now(),
+      item: itemData.item,
       status: 'todo'
     };
 
-    // Ajouter à la map des orders
-    this.orders.set(order.orderId, order);
-
-    // Ajouter à la map des tables
-    if (!this.tableOrders.has(order.table)) {
-      this.tableOrders.set(order.table, new Set());
-    }
-    this.tableOrders.get(order.table).add(order.orderId);
-
-    this.notifyListeners('orderAdded', order);
-    console.log('Commande ajoutée:', order.orderId, 'Table:', order.table);
+    console.log('📥 Ajout article:', item.item.name, 'table:', item.table);
+    
+    // Ajouter à l'array
+    this.data.orders.push(item);
+    console.log('✅ Article ajouté. Total:', this.data.orders.length);
+    
+    this.saveToStorage();
+    this.notifyListeners('itemAdded', item);
   },
 
   /**
-   * Supprime une commande (uniquement si status = 'todo')
-   * @param {string} orderId - ID de la commande
-   * @returns {boolean} True si supprimée avec succès
+   * Supprime un article par nom + table (premier "todo" trouvé)
    */
-  removeOrder(orderId) {
-    const order = this.orders.get(orderId);
-    if (!order) {
-      console.warn('Commande non trouvée:', orderId);
+  removeItemByNameAndTable(itemName, tableNumber) {
+    console.log('🔍 Recherche article à supprimer:', itemName, 'table:', tableNumber);
+    
+    // Chercher le premier article "todo" avec ce nom sur cette table
+    const itemIndex = this.data.orders.findIndex(item => 
+      item.table === tableNumber &&
+      item.status === 'todo' &&
+      (item.item.name.fr === itemName || item.item.name.th === itemName || item.item.name === itemName)
+    );
+    
+    if (itemIndex === -1) {
+      console.error('❌ Article non trouvé:', itemName, 'table:', tableNumber);
       return false;
     }
-
-    if (order.status === 'done') {
-      console.warn('Impossible de supprimer une commande terminée:', orderId);
-      return false;
-    }
-
-    // Supprimer de la map des orders
-    this.orders.delete(orderId);
-
-    // Supprimer de la map des tables
-    const tableOrderSet = this.tableOrders.get(order.table);
-    if (tableOrderSet) {
-      tableOrderSet.delete(orderId);
-      if (tableOrderSet.size === 0) {
-        this.tableOrders.delete(order.table);
-      }
-    }
-
-    this.notifyListeners('orderRemoved', { orderId, table: order.table });
-    console.log('Commande supprimée:', orderId);
+    
+    const item = this.data.orders[itemIndex];
+    console.log('📝 Article trouvé à l\'index', itemIndex, ':', item.item.name);
+    
+    // Supprimer l'article
+    const removedItem = this.data.orders.splice(itemIndex, 1)[0];
+    console.log('✅ Article supprimé:', removedItem.item.name);
+    
+    this.saveToStorage();
+    this.notifyListeners('itemRemoved', { itemName, table: tableNumber });
     return true;
   },
 
   /**
-   * Change le statut d'une commande
-   * @param {string} orderId - ID de la commande
-   * @param {string} status - Nouveau statut ('todo' | 'done')
-   * @returns {boolean} True si changé avec succès
+   * Change le statut d'un article par nom + table
    */
-  changeOrderStatus(orderId, status) {
-    const order = this.orders.get(orderId);
-    if (!order) {
-      console.warn('Commande non trouvée:', orderId);
-      return false;
-    }
-
-    if (order.status === status) {
-      return true; // Déjà le bon statut
-    }
-
-    order.status = status;
-    this.notifyListeners('orderStatusChanged', { orderId, status, table: order.table });
-    console.log('Statut changé:', orderId, '→', status);
+  changeItemStatus(itemName, tableNumber, status) {
+    const item = this.data.orders.find(item => 
+      item.table === tableNumber &&
+      (item.item.name.fr === itemName || item.item.name.th === itemName || item.item.name === itemName)
+    );
+    
+    if (!item || item.status === status) return false;
+    
+    console.log('Changement statut:', itemName, 'table:', tableNumber, '→', status);
+    item.status = status;
+    
+    this.saveToStorage();
+    this.notifyListeners('itemStatusChanged', { itemName, status, table: tableNumber });
     return true;
   },
 
   /**
-   * Obtient une commande par ID
-   * @param {string} orderId - ID de la commande
-   * @returns {Object|null} Commande ou null
+   * Récupère tous les articles d'une table
    */
-  getOrder(orderId) {
-    return this.orders.get(orderId) || null;
-  },
-
-  /**
-   * Obtient toutes les commandes d'une table
-   * @param {number} tableNumber - Numéro de table
-   * @returns {Array} Liste des commandes
-   */
-  getTableOrders(tableNumber) {
-    const orderIds = this.tableOrders.get(tableNumber);
-    if (!orderIds) {
+  getTableItems(tableNumber) {
+    // Protection : s'assurer que orders est un array
+    if (!Array.isArray(this.data.orders)) {
+      console.error('ERREUR: this.data.orders n\'est pas un array:', this.data.orders);
+      this.data.orders = [];
       return [];
     }
-
-    return Array.from(orderIds)
-      .map(orderId => this.orders.get(orderId))
-      .filter(order => order) // Filtrer les orders null
-      .sort((a, b) => a.timestamp - b.timestamp); // Trier par timestamp
+    
+    return this.data.orders
+      .filter(item => item.table === tableNumber)
+      .sort((a, b) => a.timestamp - b.timestamp);
   },
 
   /**
    * Calcule le total d'une table
-   * @param {number} tableNumber - Numéro de table
-   * @returns {number} Total des prix
    */
   getTableTotal(tableNumber) {
-    const orders = this.getTableOrders(tableNumber);
-    return orders.reduce((total, order) => total + order.item.price, 0);
+    return this.getTableItems(tableNumber)
+      .reduce((total, item) => total + (item.item?.price || 0), 0);
   },
 
   /**
-   * Vide toutes les commandes d'une table
-   * @param {number} tableNumber - Numéro de table
+   * Vide tous les articles terminés d'une table
    */
   clearTable(tableNumber) {
-    const orderIds = this.tableOrders.get(tableNumber);
-    if (!orderIds) {
-      return;
-    }
-
-    // Supprimer toutes les commandes de cette table
-    Array.from(orderIds).forEach(orderId => {
-      this.orders.delete(orderId);
+    const tableItems = this.getTableItems(tableNumber);
+    const completedItems = tableItems.filter(item => item.status === 'done');
+    
+    console.log(`Suppression de ${completedItems.length} articles terminés de la table ${tableNumber}`);
+    
+    // Supprimer de l'array principal
+    completedItems.forEach(item => {
+      const index = this.data.orders.findIndex(o => 
+        o.table === item.table && 
+        o.item.name === item.item.name && 
+        o.timestamp === item.timestamp
+      );
+      if (index > -1) {
+        this.data.orders.splice(index, 1);
+      }
     });
-
-    // Supprimer la table de la map
-    this.tableOrders.delete(tableNumber);
-
-    this.notifyListeners('tableCleared', tableNumber);
-    console.log('Table vidée:', tableNumber);
+    
+    this.saveToStorage();
+    this.notifyListeners('tableCleared', { tableNumber, clearedCount: completedItems.length });
   },
 
   /**
-   * Obtient toutes les tables qui ont des commandes
-   * @returns {Array} Liste des numéros de tables
+   * Récupère toutes les tables avec commandes
    */
   getActiveTables() {
-    return Array.from(this.tableOrders.keys()).sort((a, b) => a - b);
+    const tables = [...new Set(this.data.orders.map(order => order.table))];
+    return tables.sort((a, b) => a - b);
   },
 
   /**
-   * Obtient le nombre total de commandes
+   * Compte total des commandes
    * @returns {number} Nombre de commandes
    */
   getTotalOrdersCount() {
-    return this.orders.size;
+    return this.data.orders.length;
   },
 
   /**
@@ -215,26 +260,61 @@ const State = {
    * @returns {Object} Statistiques
    */
   getStats() {
-    const totalOrders = this.orders.size;
-    const activeTables = this.getActiveTables().length;
-    const todoCount = Array.from(this.orders.values()).filter(o => o.status === 'todo').length;
-    const doneCount = totalOrders - todoCount;
-
+    const todo = this.data.orders.filter(o => o.status === 'todo').length;
+    const done = this.data.orders.filter(o => o.status === 'done').length;
+    const tables = this.getActiveTables().length;
+    
     return {
-      totalOrders,
-      activeTables,
-      todoCount,
-      doneCount
+      totalOrders: this.data.orders.length,
+      todoOrders: todo,
+      doneOrders: done,
+      activeTables: tables
     };
   },
 
   /**
-   * Vide complètement l'état (pour debug/reset)
+   * Vide complètement le state
    */
   clear() {
-    this.orders.clear();
-    this.tableOrders.clear();
-    this.notifyListeners('stateCleared', null);
-    console.log('État complètement vidé');
+    this.data = { orders: [] };
+    this.saveToStorage();
+    this.notifyListeners('stateCleared', {});
+    console.log('State vidé complètement');
+  },
+
+  /**
+   * Debug: affiche le state actuel
+   */
+  debug() {
+    console.log('=== STATE DEBUG ===');
+    console.log('Orders:', this.data.orders.length);
+    console.log('Tables actives:', this.getActiveTables().length);
+    console.log('Data complète:', this.data);
+    console.log('==================');
+  },
+
+  /**
+   * Affiche le contenu brut du localStorage
+   */
+  debugStorage() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        console.log('=== STORAGE ===');
+        const data = JSON.parse(stored);
+        console.log('Orders:', data.orders?.length || 0);
+        console.log('Data complète:', data);
+        console.log('===============');
+      } else {
+        console.log('LocalStorage vide');
+      }
+    } catch (e) {
+      console.error('Erreur lecture storage:', e);
+    }
   }
-}; 
+};
+
+// Export pour utilisation
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = State;
+} 
