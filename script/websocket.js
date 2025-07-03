@@ -42,7 +42,7 @@ const WebSocketManager = {
 
     try {
       // Connexion automatique à ws://${location.hostname}:3000
-      const wsUrl = `ws://${location.hostname}:3000`;
+      const wsUrl = `https://kitchen-ws.loca.lt`;
       console.log('Tentative de connexion WebSocket vers:', wsUrl);
       
       this.socket = new WebSocket(wsUrl);

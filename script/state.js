@@ -215,28 +215,18 @@ const State = {
   },
 
   /**
-   * Vide tous les articles terminés d'une table
+   * Vide tous les articles d'une table
    */
   clearTable(tableNumber) {
     const tableItems = this.getTableItems(tableNumber);
-    const completedItems = tableItems.filter(item => item.status === 'done');
     
-    console.log(`Suppression de ${completedItems.length} articles terminés de la table ${tableNumber}`);
+    console.log(`Suppression de ${tableItems.length} articles de la table ${tableNumber}`);
     
-    // Supprimer de l'array principal
-    completedItems.forEach(item => {
-      const index = this.data.orders.findIndex(o => 
-        o.table === item.table && 
-        o.item.name === item.item.name && 
-        o.timestamp === item.timestamp
-      );
-      if (index > -1) {
-        this.data.orders.splice(index, 1);
-      }
-    });
+    // Supprimer TOUS les articles de cette table (todo et done)
+    this.data.orders = this.data.orders.filter(item => item.table !== tableNumber);
     
     this.saveToStorage();
-    this.notifyListeners('tableCleared', { tableNumber, clearedCount: completedItems.length });
+    this.notifyListeners('tableCleared', { tableNumber, clearedCount: tableItems.length });
   },
 
   /**

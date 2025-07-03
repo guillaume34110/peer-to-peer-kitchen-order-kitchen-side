@@ -63,6 +63,51 @@ const UI = {
   },
 
   /**
+   * Calcule et affiche le rendu de monnaie pour une table
+   */
+  calculateChange(tableNumber) {
+    const paymentInput = document.getElementById(`payment-${tableNumber}`);
+    const changeResult = document.getElementById(`change-${tableNumber}`);
+    
+    if (!paymentInput || !changeResult) return;
+    
+    const totalAmount = State.getTableTotal(tableNumber);
+    const paidAmount = parseFloat(paymentInput.value) || 0;
+    
+    if (paidAmount === 0) {
+      changeResult.style.display = 'none';
+      return;
+    }
+    
+    const change = paidAmount - totalAmount;
+    changeResult.style.display = 'block';
+    
+    if (change >= 0) {
+      changeResult.textContent = `Rendu: ${I18n.formatPrice(change)}`;
+      changeResult.style.color = change > 0 ? '#28a745' : '#6c757d';
+    } else {
+      changeResult.textContent = `Manque: ${I18n.formatPrice(Math.abs(change))}`;
+      changeResult.style.color = '#dc3545';
+    }
+  },
+
+  /**
+   * Réinitialise le montant payé pour une table
+   */
+  resetPayment(tableNumber) {
+    const paymentInput = document.getElementById(`payment-${tableNumber}`);
+    const changeResult = document.getElementById(`change-${tableNumber}`);
+    
+    if (paymentInput) {
+      paymentInput.value = '';
+    }
+    
+    if (changeResult) {
+      changeResult.style.display = 'none';
+    }
+  },
+
+  /**
    * Rend une table complète basée uniquement sur le State
    */
   renderTable(tableNumber) {
@@ -94,6 +139,9 @@ const UI = {
 
     // 4. Rendre les items (pure fonction du state)
     this.renderTableItems(tableNumber);
+    
+    // 5. Recalculer le rendu de monnaie si le total a changé
+    this.calculateChange(tableNumber);
   },
 
   /**
@@ -162,11 +210,18 @@ const UI = {
           <div class="table-card__total">
             ${I18n.t('total')}: ${I18n.formatPrice(State.getTableTotal(tableNumber))}
           </div>
+          <input type="number" 
+                 id="payment-${tableNumber}" 
+                 placeholder="Montant reçu"
+                 min="0"
+                 step="0.01"
+                 oninput="UI.calculateChange(${tableNumber})">
           <button class="btn btn--danger btn--small" 
                   onclick="UI.clearTable(${tableNumber})" 
                   ${!hasItems ? 'disabled' : ''}>
             ${I18n.t('finish')}
           </button>
+          <div class="change-result" id="change-${tableNumber}" style="display: none;"></div>
         </div>
       </div>
     `;
@@ -283,6 +338,9 @@ const UI = {
     if (confirm(I18n.t('confirmFinish') || 'Terminer cette table ?')) {
       State.clearTable(tableNumber);
       console.log('✅ Table vidée dans le State, envoi état mis à jour...');
+      
+      // Réinitialiser le montant payé
+      this.resetPayment(tableNumber);
       
       // Envoyer l'état mis à jour via WebSocket
       WebSocketManager.sendUpdatedState();

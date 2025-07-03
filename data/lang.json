@@ -17,7 +17,10 @@
     "disconnected": "Déconnecté",
     "connectionError": "Erreur de connexion",
     "confirmCancel": "Confirmer l'annulation ?",
-    "confirmFinish": "Terminer cette table ?"
+    "confirmFinish": "Terminer cette table ?",
+    "received": "Reçu",
+    "change": "Rendu",
+    "missing": "Manque"
   },
   "th": {
     "kitchen": "ครัว",
@@ -37,6 +40,9 @@
     "disconnected": "ขาดการเชื่อมต่อ",
     "connectionError": "ข้อผิดพลาดในการเชื่อมต่อ",
     "confirmCancel": "ยืนยันการยกเลิก?",
-    "confirmFinish": "ปิดโต๊ะนี้?"
+    "confirmFinish": "ปิดโต๊ะนี้?",
+    "received": "ได้รับ",
+    "change": "เงินทอน",
+    "missing": "ขาด"
   }
 } 

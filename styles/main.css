@@ -192,6 +192,22 @@ body {
   color: var(--primary-color);
 }
 
+.table-card__footer input[type="number"] {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  margin: var(--spacing-xs) 0;
+}
+
+.change-result {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: var(--spacing-xs);
+  text-align: center;
+}
+
 /* Order Item */
 .order-item {
   background: var(--bg-primary);
@@ -391,6 +407,8 @@ body {
   .order-item__actions {
     flex-wrap: wrap;
   }
+
+
 }
 
 @media (max-width: 480px) {
@@ -411,4 +429,6 @@ body {
     padding: var(--spacing-xs);
     font-size: 0.75rem;
   }
+
+
 } 
