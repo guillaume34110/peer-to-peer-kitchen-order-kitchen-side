@@ -2,7 +2,7 @@
  * Module de gestion WebSocket
  * Gère la connexion WebSocket et la réception des commandes
  */
-const WebSocketManager = {
+ const WebSocketManager = {
   socket: null,
   reconnectInterval: 3000, // 3 secondes
   maxReconnectAttempts: 10,
@@ -18,7 +18,6 @@ const WebSocketManager = {
     this.initStatusElements();
     this.connect();
     
-    console.log('WebSocketManager initialisé');
   },
 
   /**
@@ -43,7 +42,6 @@ const WebSocketManager = {
     try {
       // Connexion automatique à ws://${location.hostname}:3000
       const wsUrl = `https://kitchen-ws.loca.lt`;
-      console.log('Tentative de connexion WebSocket vers:', wsUrl);
       
       this.socket = new WebSocket(wsUrl);
       
@@ -63,7 +61,6 @@ const WebSocketManager = {
    * Gère l'ouverture de la connexion
    */
   handleOpen() {
-    console.log('Connexion WebSocket établie');
     this.isConnecting = false;
     this.reconnectAttempts = 0;
     this.updateConnectionStatus('connected');
@@ -76,13 +73,11 @@ const WebSocketManager = {
   handleMessage(event) {
     try {
       const data = JSON.parse(event.data);
-      console.log('Message WebSocket reçu:', data);
       
       this.processOrderMessage(data);
       
     } catch (error) {
       console.error('Erreur lors du parsing du message WebSocket:', error);
-      console.log('Message brut reçu:', event.data);
     }
   },
 
@@ -101,9 +96,18 @@ const WebSocketManager = {
     if (data.action === 'remove') {
       // Suppression d'une commande
       this.handleOrderRemoval(data);
+    } else if (data.action === 'modify') {
+      // Modification d'une commande existante
+      this.handleOrderModification(data);
     } else if (data.action === 'getState') {
       // Demande d'état
       this.handleGetState(data);
+    } else if (data.action === 'getMenu') {
+      // Demande de menu
+      this.handleGetMenu(data);
+    } else if (data.action === 'getIngredients') {
+      // Demande d'ingrédients
+      this.handleGetIngredients(data);
     } else {
       // Ajout d'une nouvelle commande
       this.handleOrderAddition(data);
@@ -121,8 +125,26 @@ const WebSocketManager = {
       return false;
     }
 
-    // Pour les demandes d'état
-    if (data.action === 'getState') {
+    // Pour les demandes d'état, menu ou ingrédients
+    if (data.action === 'getState' || data.action === 'getMenu' || data.action === 'getIngredients') {
+      return true;
+    }
+
+    // Pour les modifications, vérifier la structure
+    if (data.action === 'modify') {
+      // Vérifier que l'item est présent et valide
+      if (!data.item || !data.item.id || !data.item.price || !data.item.name) {
+        return false;
+      }
+      // Vérifier que name est un objet avec au moins fr ou th
+      if (typeof data.item.name !== 'object' || 
+          (!data.item.name.fr && !data.item.name.th)) {
+        return false;
+      }
+      // Vérifier que le timestamp original est présent pour identifier la commande à modifier
+      if (!data.originalTimestamp) {
+        return false;
+      }
       return true;
     }
 
@@ -167,12 +189,8 @@ const WebSocketManager = {
    * Gère l'ajout d'un nouvel article
    */
   handleOrderAddition(data) {
-    console.log('Ajout article:', data.item.name, 'Table:', data.table);
-    
     // Ajouter l'article au state - l'UI se synchronisera automatiquement
     State.addItem(data);
-    
-    console.log('✅ Article ajouté au State, synchronisation UI automatique en cours...');
     
     // Renvoyer l'état mis à jour
     this.sendUpdatedState();
@@ -182,8 +200,6 @@ const WebSocketManager = {
    * Gère la suppression d'un article via WebSocket
    */
   handleOrderRemoval(data) {
-    console.log('Suppression article via WebSocket:', data.item.name, 'Table:', data.table);
-    
     // Déterminer le nom de l'article dans la langue actuelle
     const currentLang = I18n.getCurrentLanguage();
     const itemName = data.item.name[currentLang] || data.item.name.fr || data.item.name.th;
@@ -192,8 +208,6 @@ const WebSocketManager = {
     const success = State.removeItemByNameAndTable(itemName, data.table);
     
     if (success) {
-      console.log('✅ Article supprimé avec succès via WebSocket, synchronisation UI automatique en cours...');
-      
       // Renvoyer l'état mis à jour
       this.sendUpdatedState();
     } else {
@@ -202,11 +216,24 @@ const WebSocketManager = {
   },
 
   /**
+   * Gère la modification d'un article existant via WebSocket
+   */
+  handleOrderModification(data) {
+    // Modifier l'article dans le state - l'UI se synchronisera automatiquement
+    const success = State.modifyItemByTimestamp(data.originalTimestamp, data);
+    
+    if (success) {
+      // Renvoyer l'état mis à jour
+      this.sendUpdatedState();
+    } else {
+      console.warn('❌ Échec de la modification via WebSocket:', data.originalTimestamp);
+    }
+  },
+
+  /**
    * Gère la demande d'état via WebSocket
    */
   handleGetState(data) {
-    console.log('Demande d\'état reçue, timestamp:', data.timestamp);
-    
     // Générer l'état au format demandé
     const stateResponse = this.generateStateResponse();
     
@@ -215,11 +242,86 @@ const WebSocketManager = {
   },
 
   /**
+   * Gère la demande de menu via WebSocket
+   */
+  async handleGetMenu(data) {
+    const menuItems = window.MenuManager ? MenuManager.getMenuItems() : (window.menuItems || []);
+    
+    // Convertir les chemins d'images en Base64
+    const processedMenuPromises = menuItems.map(async (item) => {
+      if (item.image && !item.image.startsWith('data:image')) {
+        try {
+          const imageAsBase64 = await this.convertImageToBase64(item.image);
+          return { ...item, image: imageAsBase64 };
+        } catch (error) {
+          console.warn(`Impossible de charger l'image ${item.image}. Le chemin original sera utilisé.`, error);
+          return item; // En cas d'erreur, renvoyer l'item tel quel
+        }
+      }
+      return item;
+    });
+
+    const processedMenu = await Promise.all(processedMenuPromises);
+    
+    // Renvoyer le menu avec les images encodées
+    this.sendMenu(processedMenu);
+  },
+
+  /**
+   * Récupère un fichier image local et le convertit en Base64.
+   * @param {string} url - Le chemin local vers l'image.
+   * @returns {Promise<string>} Une promesse qui se résout avec la data URL en Base64.
+   */
+  convertImageToBase64(url) {
+    return new Promise((resolve, reject) => {
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            console.error(`❌ Erreur HTTP ${response.status}: ${response.statusText} pour ${url}`);
+            throw new Error(`Erreur HTTP lors du chargement de l'image: ${response.statusText}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result);
+          };
+          reader.onerror = (error) => {
+            console.error(`❌ Erreur de lecture du fichier: ${url}`, error);
+            reject(error);
+          };
+          reader.readAsDataURL(blob);
+        })
+        .catch(error => {
+          console.error(`❌ Échec de la conversion de l'image: ${url}`, error);
+          reject(error);
+        });
+    });
+  },
+
+  /**
+   * Gère la demande d'ingrédients via WebSocket
+   */
+  handleGetIngredients(data) {
+    // Récupérer les ingrédients depuis le IngredientsManager (localStorage)
+    const ingredients = window.IngredientsManager ? IngredientsManager.getIngredients() : (window.ingredients || []);
+    
+    // Renvoyer les ingrédients
+    this.sendIngredients(ingredients);
+  },
+
+  /**
    * Génère la réponse d'état au format demandé
    */
   generateStateResponse() {
     const allItems = State.data.orders || [];
     
+    // Récupérer la configuration de la grille depuis le localStorage
+    const gridCols = parseInt(localStorage.getItem('kitchen-grid-cols')) || 3;
+    const gridRows = parseInt(localStorage.getItem('kitchen-grid-rows')) || 3;
+    const totalTables = gridCols * gridRows;
+
     // Grouper les items par table et timestamp pour créer des orderId
     const orderGroups = new Map();
     
@@ -236,21 +338,28 @@ const WebSocketManager = {
         });
       }
       
+      // Trouver la recette originale pour obtenir la liste des ingrédients de base
+      const menuItem = window.menuItems.find(mi => mi.id === item.item.id);
+
       // Ajouter l'item à ce groupe
       orderGroups.get(orderId).items.push({
         id: item.item.id,
         price: item.item.price,
+        supplementPrice: item.item.supplementPrice || 0,
         name: item.item.name,
-        status: item.status
+        status: item.status,
+        ingredients: menuItem ? menuItem.ingredients : [],
+        ingredientsRemoved: item.ingredientsRemoved || [],
+        ingredientsAdded: item.ingredientsAdded || [],
+        supplements: item.supplements || []
       });
     });
     
     // Convertir en array
     const orders = Array.from(orderGroups.values());
     
-    console.log(`Génération état: ${orders.length} commandes, ${allItems.length} items au total`);
-    
     return {
+      totalTables: totalTables,
       orders: orders
     };
   },
@@ -260,17 +369,62 @@ const WebSocketManager = {
    */
   sendState(stateData) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      console.error('Impossible d\'envoyer l\'état: WebSocket non connecté');
+      console.error('❌ Impossible d\'envoyer l\'état: WebSocket non connecté');
       return false;
     }
     
     try {
       const message = JSON.stringify(stateData);
       this.socket.send(message);
-      console.log('✅ État envoyé:', stateData);
       return true;
     } catch (error) {
-      console.error('Erreur lors de l\'envoi de l\'état:', error);
+      console.error('❌ Erreur lors de l\'envoi de l\'état:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Envoie le menu via WebSocket
+   */
+  sendMenu(menuData) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Impossible d\'envoyer le menu: WebSocket non connecté');
+      return false;
+    }
+    
+    try {
+      const menuResponse = {
+        menu: menuData
+      };
+      
+      const message = JSON.stringify(menuResponse);
+      this.socket.send(message);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi du menu:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Envoie les ingrédients via WebSocket
+   */
+  sendIngredients(ingredientsData) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Impossible d\'envoyer les ingrédients: WebSocket non connecté');
+      return false;
+    }
+    
+    try {
+      const ingredientsResponse = {
+        ingredients: ingredientsData
+      };
+      const message = JSON.stringify(ingredientsResponse);
+      this.socket.send(message);
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi des ingrédients:', error);
       return false;
     }
   },
@@ -281,7 +435,39 @@ const WebSocketManager = {
   sendUpdatedState() {
     const stateResponse = this.generateStateResponse();
     this.sendState(stateResponse);
-    console.log('🔄 État mis à jour envoyé automatiquement');
+  },
+
+  /**
+   * Envoie les ingrédients mis à jour après une modification
+   */
+  sendUpdatedIngredients() {
+    const ingredients = window.IngredientsManager ? IngredientsManager.getIngredients() : (window.ingredients || []);
+    this.sendIngredients(ingredients);
+  },
+
+  /**
+   * Envoie une modification de commande via WebSocket
+   */
+  sendOrderModification(originalTimestamp, modificationData) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('Impossible d\'envoyer la modification: WebSocket non connecté');
+      return false;
+    }
+    
+    try {
+      const message = {
+        action: 'modify',
+        originalTimestamp: originalTimestamp,
+        timestamp: Date.now(),
+        ...modificationData
+      };
+      
+      this.socket.send(JSON.stringify(message));
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la modification:', error);
+      return false;
+    }
   },
 
   /**
@@ -289,7 +475,6 @@ const WebSocketManager = {
    * @param {CloseEvent} event - Événement de fermeture
    */
   handleClose(event) {
-    console.log('Connexion WebSocket fermée:', event.code, event.reason);
     this.isConnecting = false;
     this.updateConnectionStatus('disconnected');
     
@@ -318,7 +503,6 @@ const WebSocketManager = {
     }
 
     this.reconnectAttempts++;
-    console.log(`Reconnexion programmée dans ${this.reconnectInterval}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
     
     setTimeout(() => {
       this.connect();
@@ -403,4 +587,7 @@ const WebSocketManager = {
       url: this.socket ? this.socket.url : null
     };
   }
-}; 
+};
+
+// Rendre WebSocketManager accessible globalement
+window.WebSocketManager = WebSocketManager; 

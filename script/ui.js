@@ -198,9 +198,20 @@ const UI = {
       card.classList.add('has-orders');
     }
 
+    const peopleCount = State.getTablePeopleCount(tableNumber);
+    
     card.innerHTML = `
       <div class="table-card__header">
         <h3 class="table-card__title">${I18n.t('table')} ${tableNumber}</h3>
+        <div class="table-card__people">
+          <label for="people-${tableNumber}">${I18n.t('peopleCount')}:</label>
+          <input type="number" 
+                 id="people-${tableNumber}" 
+                 value="${peopleCount}" 
+                 min="0" 
+                 max="20"
+                 onchange="UI.updatePeopleCount(${tableNumber}, this.value)">
+        </div>
       </div>
       <div class="table-card__content">
         <div class="table-card__orders" id="orders-${tableNumber}">
@@ -212,7 +223,7 @@ const UI = {
           </div>
           <input type="number" 
                  id="payment-${tableNumber}" 
-                 placeholder="Montant reçu"
+                 placeholder="${I18n.t('amountReceived')}"
                  min="0"
                  step="0.01"
                  oninput="UI.calculateChange(${tableNumber})">
@@ -259,10 +270,64 @@ const UI = {
   createOrderItemHTML(order) {
     const isDone = order.status === 'done';
     const itemName = I18n.getItemName(order.item);
-    const price = I18n.formatPrice(order.item.price);
     
-    // Échapper les caractères spéciaux pour les onclick
-    const escapedItemName = itemName.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    // Gérer les ingrédients retirés et ajoutés
+    const ingredientsAdded = order.ingredientsAdded || [];
+    const ingredientsRemoved = order.ingredientsRemoved || [];
+    
+    // Calculer le prix total : prix de base + (prix du supplément * nombre d'ingrédients)
+    const basePrice = order.item.price || 0;
+    const supplementPrice = order.item.supplementPrice || 0;
+    const totalSupplementPrice = ingredientsAdded.length * supplementPrice;
+    const totalPrice = basePrice + totalSupplementPrice;
+    const price = I18n.formatPrice(totalPrice);
+    
+    let ingredientsHTML = '';
+    if (ingredientsRemoved.length > 0 || ingredientsAdded.length > 0) {
+      ingredientsHTML = `
+        <div class="order-item__ingredients">
+          ${ingredientsRemoved.length > 0 ? `
+            <div class="ingredients-section">
+              <span class="ingredients-label removed">${I18n.t('ingredientsRemoved')}:</span>
+              <div class="ingredients-tags">
+                ${ingredientsRemoved.map(ingIdOrName => {
+                  const ingredient = window.ingredients.find(ing => ing.id === ingIdOrName || ing.name.fr === ingIdOrName);
+                  let ingName;
+                  if (ingredient) {
+                    const currentLang = I18n.getCurrentLanguage();
+                    ingName = ingredient.name[currentLang] || ingredient.name.fr;
+                  } else {
+                    console.warn(`Ingrédient non trouvé: ${ingIdOrName}. Affichage du nom brut.`);
+                    ingName = ingIdOrName;
+                  }
+                  return `<span class="ingredient-tag removed">${ingName}</span>`;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+          ${ingredientsAdded.length > 0 ? `
+            <div class="ingredients-section">
+              <span class="ingredients-label added">${I18n.t('ingredientsAdded')}:</span>
+              <div class="ingredients-tags">
+                ${ingredientsAdded.map(ingIdOrName => {
+                  const ingredient = window.ingredients.find(ing => ing.id === ingIdOrName || ing.name.fr === ingIdOrName);
+                  let ingName;
+                  if (ingredient) {
+                    const currentLang = I18n.getCurrentLanguage();
+                    ingName = ingredient.name[currentLang] || ingredient.name.fr;
+                  } else {
+                    console.warn(`Ingrédient non trouvé: ${ingIdOrName}. Affichage du nom brut.`);
+                    ingName = ingIdOrName;
+                  }
+                  return `<span class="ingredient-tag added">${ingName}</span>`;
+                }).join('')}
+              </div>
+              ${totalSupplementPrice > 0 ? `<div class="supplement-price">+${I18n.formatPrice(totalSupplementPrice)}</div>` : ''}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
     
     return `
       <div class="order-item ${isDone ? 'done' : ''}">
@@ -270,14 +335,15 @@ const UI = {
           <span class="order-item__name">${itemName}</span>
           <span class="order-item__price">${price}</span>
         </div>
+        ${ingredientsHTML}
         <div class="order-item__actions">
           <button class="btn ${isDone ? 'btn--secondary' : 'btn--success'} btn--small"
-                  onclick="UI.toggleItemStatus('${escapedItemName}', ${order.table})">
+                  onclick="UI.toggleItemStatusByTimestamp(${order.timestamp})">
             ${isDone ? I18n.t('todo') : I18n.t('done')}
           </button>
           ${!isDone ? `
             <button class="btn btn--danger btn--small"
-                    onclick="UI.cancelItem('${escapedItemName}', ${order.table})">
+                    onclick="UI.cancelItemByTimestamp(${order.timestamp})">
               ${I18n.t('cancel')}
             </button>
           ` : ''}
@@ -287,20 +353,52 @@ const UI = {
   },
 
   /**
-   * Annule un article (modifie le State et envoie l'état mis à jour)
+   * Annule un article par timestamp (méthode recommandée)
    */
-  cancelItem(itemName, tableNumber) {
-    console.log('🗑️ Annulation demandée pour:', itemName, 'table:', tableNumber);
+  cancelItemByTimestamp(timestamp) {
+    // Trouver l'article dans le state par timestamp
+    const item = State.data.orders.find(order => order.timestamp === timestamp);
+    
+    if (!item) {
+      console.error('Article non trouvé avec timestamp:', timestamp);
+      return;
+    }
+
+    const itemName = I18n.getItemName(item.item);
     
     // Message de confirmation
-    if (!confirm(`Annuler "${itemName}" ?`)) {
+    if (!confirm(`${I18n.t('confirmCancelItem')} "${itemName}" ?`)) {
+      return;
+    }
+
+    // Supprimer du state par timestamp
+    const itemIndex = State.data.orders.findIndex(order => order.timestamp === timestamp);
+    if (itemIndex === -1) {
+      alert(`${I18n.t('impossibleToFind')} l'article`);
+      return;
+    }
+
+    State.data.orders.splice(itemIndex, 1);
+    State.saveToStorage();
+    State.notifyListeners('itemRemoved', { timestamp, itemName, table: item.table });
+
+    // Envoyer l'état mis à jour via WebSocket
+    WebSocketManager.sendUpdatedState();
+  },
+
+  /**
+   * Annule un article par nom (conservé pour compatibilité)
+   */
+  cancelItem(itemName, tableNumber) {
+    // Message de confirmation
+    if (!confirm(`${I18n.t('confirmCancelItem')} "${itemName}" ?`)) {
       return;
     }
 
     // Supprimer du state
     const success = State.removeItemByNameAndTable(itemName, tableNumber);
     if (!success) {
-      alert(`Impossible de trouver "${itemName}" sur la table ${tableNumber}`);
+      alert(`${I18n.t('impossibleToFind')} "${itemName}" sur la table ${tableNumber}`);
       return;
     }
 
@@ -311,7 +409,26 @@ const UI = {
   },
 
   /**
-   * Toggle statut d'un article (modifie le State et envoie l'état mis à jour)
+   * Toggle statut d'un article par timestamp (méthode recommandée)
+   */
+  toggleItemStatusByTimestamp(timestamp) {
+    // Trouver l'article dans le state par timestamp
+    const item = State.data.orders.find(order => order.timestamp === timestamp);
+    
+    if (!item) {
+      console.error('Article non trouvé avec timestamp:', timestamp);
+      return;
+    }
+    
+    const newStatus = item.status === 'todo' ? 'done' : 'todo';
+    State.changeItemStatusByTimestamp(timestamp, newStatus);
+    
+    // Envoyer l'état mis à jour via WebSocket
+    WebSocketManager.sendUpdatedState();
+  },
+
+  /**
+   * Toggle statut d'un article par nom (conservé pour compatibilité)
    */
   toggleItemStatus(itemName, tableNumber) {
     // Trouver l'article dans le state pour connaître son statut actuel
@@ -325,8 +442,6 @@ const UI = {
     const newStatus = item.status === 'todo' ? 'done' : 'todo';
     State.changeItemStatus(itemName, tableNumber, newStatus);
     
-    console.log('✅ Statut modifié dans le State, envoi état mis à jour...');
-    
     // Envoyer l'état mis à jour via WebSocket
     WebSocketManager.sendUpdatedState();
   },
@@ -337,7 +452,6 @@ const UI = {
   clearTable(tableNumber) {
     if (confirm(I18n.t('confirmFinish') || 'Terminer cette table ?')) {
       State.clearTable(tableNumber);
-      console.log('✅ Table vidée dans le State, envoi état mis à jour...');
       
       // Réinitialiser le montant payé
       this.resetPayment(tableNumber);
@@ -345,6 +459,16 @@ const UI = {
       // Envoyer l'état mis à jour via WebSocket
       WebSocketManager.sendUpdatedState();
     }
+  },
+
+  /**
+   * Met à jour le nombre de personnes pour une table
+   * @param {number} tableNumber - Numéro de la table
+   * @param {string|number} peopleCount - Nombre de personnes
+   */
+  updatePeopleCount(tableNumber, peopleCount) {
+    const count = parseInt(peopleCount) || 0;
+    State.setTablePeopleCount(tableNumber, count);
   },
 
   /**

@@ -8,7 +8,25 @@
 </head>
 <body>
     <header class="header">
-        <h1 class="header__title" data-i18n="kitchen">Cuisine</h1>
+        <div class="header__nav">
+            <nav class="nav-tabs">
+                <button id="nav-kitchen" class="nav-tab nav-tab--active" data-i18n="kitchen">
+                    🍳 Cuisine
+                </button>
+                <button id="nav-menu" class="nav-tab" data-i18n="menu">
+                    📋 Menu
+                </button>
+                <button id="nav-orderlist" class="nav-tab" data-i18n="orderList">
+                    📋 Liste commandes
+                </button>
+                <button id="nav-ingredients" class="nav-tab" data-i18n="ingredients">
+                    🥕 Ingrédients
+                </button>
+                <button id="nav-stats" class="nav-tab" data-i18n="stats">
+                    📊 Statistiques
+                </button>
+            </nav>
+        </div>
         <div class="header__controls">
             <button id="settings-btn" class="btn btn--secondary">
                 ⚙️ <span data-i18n="settings">Paramètres</span>
@@ -55,20 +73,120 @@
     </div>
 
     <!-- Scripts -->
+    <script src="data/menu.js" type="module"></script>
+    <script src="data/ingredients.js" type="module"></script>
     <script src="script/i18n.js"></script>
     <script src="script/state.js"></script>
     <script src="script/ui.js"></script>
     <script src="script/settings.js"></script>
     <script src="script/websocket.js"></script>
+    <script src="script/menuManager.js"></script>
+    <script src="script/menuUI.js"></script>
+    <script src="script/ingredientsManager.js"></script>
+    <script src="script/ingredientsUI.js"></script>
+    <script src="script/orderListUI.js"></script>
+    <script src="script/statsManager.js"></script>
+    <script src="script/statsUI.js"></script>
     
     <script>
+        // Module de navigation entre les vues
+        const AppNavigation = {
+            currentView: 'kitchen',
+
+            init() {
+                this.bindEvents();
+                console.log('AppNavigation initialisé');
+            },
+
+            bindEvents() {
+                document.getElementById('nav-kitchen')?.addEventListener('click', () => {
+                    this.switchToView('kitchen');
+                });
+                
+                document.getElementById('nav-menu')?.addEventListener('click', () => {
+                    this.switchToView('menu');
+                });
+                
+                document.getElementById('nav-orderlist')?.addEventListener('click', () => {
+                    this.switchToView('orderlist');
+                });
+                
+                document.getElementById('nav-ingredients')?.addEventListener('click', () => {
+                    this.switchToView('ingredients');
+                });
+                
+                document.getElementById('nav-stats')?.addEventListener('click', () => {
+                    this.switchToView('stats');
+                });
+            },
+
+            switchToView(view) {
+                if (this.currentView === view) return;
+
+                // Mettre à jour les boutons de navigation
+                document.querySelectorAll('.nav-tab').forEach(tab => {
+                    tab.classList.remove('nav-tab--active');
+                });
+                document.getElementById(`nav-${view}`)?.classList.add('nav-tab--active');
+
+                // Switcher les vues
+                if (view === 'kitchen') {
+                    MenuUI.hideMenuView();
+                    OrderListUI.hideOrderListView();
+                    StatsUI.hideStatsView();
+                    document.getElementById('tables-grid').style.display = 'grid';
+                    this.currentView = 'kitchen';
+                } else if (view === 'menu') {
+                    OrderListUI.hideOrderListView();
+                    StatsUI.hideStatsView();
+                    document.getElementById('tables-grid').style.display = 'none';
+                    MenuUI.showMenuView();
+                    this.currentView = 'menu';
+                } else if (view === 'orderlist') {
+                    MenuUI.hideMenuView();
+                    StatsUI.hideStatsView();
+                    IngredientsUI.hideIngredientsView();
+                    document.getElementById('tables-grid').style.display = 'none';
+                    OrderListUI.showOrderListView();
+                    this.currentView = 'orderlist';
+                } else if (view === 'ingredients') {
+                    MenuUI.hideMenuView();
+                    OrderListUI.hideOrderListView();
+                    StatsUI.hideStatsView();
+                    document.getElementById('tables-grid').style.display = 'none';
+                    IngredientsUI.showIngredientsView();
+                    this.currentView = 'ingredients';
+                } else if (view === 'stats') {
+                    MenuUI.hideMenuView();
+                    OrderListUI.hideOrderListView();
+                    IngredientsUI.hideIngredientsView();
+                    document.getElementById('tables-grid').style.display = 'none';
+                    StatsUI.showStatsView();
+                    this.currentView = 'stats';
+                }
+            }
+        };
+
         // Initialisation de l'application
         document.addEventListener('DOMContentLoaded', async () => {
             await I18n.init();
             await Settings.init();
+            MenuManager.init();
+            IngredientsManager.init();
+            StatsManager.init();
             State.init();
             UI.init();
+            MenuUI.init();
+            OrderListUI.init();
+            IngredientsUI.init();
+            StatsUI.init();
+            AppNavigation.init();
             WebSocketManager.init();
+            
+            // Attacher les événements de navigation après initialisation de MenuUI
+            setTimeout(() => {
+                MenuUI.bindCardEvents();
+            }, 100);
         });
     </script>
 </body>

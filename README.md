@@ -102,7 +102,7 @@ ws://${location.hostname}:3000
 - **Français** et **Thaï** supportés
 - **Traductions automatiques** de l'interface
 - **Noms d'articles** multilingues dans les commandes
-- **Devises appropriées** : € pour FR, ฿ pour TH
+- **Devises appropriées** : ฿ pour FR, ฿ pour TH
 
 ### Paramètres
 

@@ -4,6 +4,7 @@
  */
 const I18n = {
   currentLanguage: 'fr',
+  currentLang: 'fr', // Pour compatibilité avec les autres fichiers
   translations: {},
 
   /**
@@ -17,6 +18,7 @@ const I18n = {
       
       // Récupérer la langue sauvegardée ou utiliser la langue par défaut
       const savedLanguage = localStorage.getItem('kitchen-language') || 'fr';
+      this.currentLang = savedLanguage; // Initialiser currentLang également
       this.setLanguage(savedLanguage);
       
       console.log('I18n initialisé avec succès');
@@ -41,6 +43,7 @@ const I18n = {
     }
 
     this.currentLanguage = language;
+    this.currentLang = language; // Pour compatibilité avec les autres fichiers
     localStorage.setItem('kitchen-language', language);
     
     // Mettre à jour l'attribut lang du document
@@ -99,6 +102,20 @@ const I18n = {
         element.textContent = translation;
       }
     });
+
+    // Mettre à jour les modules qui ont besoin d'être rafraîchis
+    if (typeof StatsUI !== 'undefined' && StatsUI.updateLanguage) {
+      StatsUI.updateLanguage();
+    }
+    if (typeof OrderListUI !== 'undefined' && OrderListUI.updateLanguage) {
+      OrderListUI.updateLanguage();
+    }
+    if (typeof IngredientsUI !== 'undefined' && IngredientsUI.updateLanguage) {
+      IngredientsUI.updateLanguage();
+    }
+    if (typeof UI !== 'undefined' && UI.updateLanguage) {
+      UI.updateLanguage();
+    }
   },
 
   /**
@@ -107,8 +124,8 @@ const I18n = {
    * @returns {string} Prix formaté
    */
   formatPrice(price) {
-    const currency = this.currentLanguage === 'th' ? '฿' : '€';
-    return `${price} ${currency}`;
+    const formattedPrice = (price || 0).toFixed(2);
+    return `${formattedPrice} ฿`;
   },
 
   /**
