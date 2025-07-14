@@ -41,7 +41,7 @@
 
     try {
       // Connexion automatique à ws://${location.hostname}:3000
-      const wsUrl = `https://kitchen-ws.loca.lt`;
+      const wsUrl = `http://guillaume.local:3000`;
       
       this.socket = new WebSocket(wsUrl);
       
@@ -194,6 +194,33 @@
     
     // Renvoyer l'état mis à jour
     this.sendUpdatedState();
+  },
+
+  /**
+   * Envoie le menu mis à jour à tous les clients connectés.
+   */
+  broadcastMenuUpdate() {
+    if (!this.wss) {
+      console.warn("WebSocket Server (wss) non initialisé. Impossible de diffuser.");
+      return;
+    }
+
+    console.log('📢 Diffusion de la mise à jour du menu à tous les clients...');
+    const menu = MenuManager.getMenuItems();
+
+    // On prépare un message standardisé
+    const message = {
+      type: 'menuUpdate',
+      payload: menu
+    };
+    const messageString = JSON.stringify(message);
+
+    // Envoyer à chaque client connecté
+    this.wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(messageString);
+      }
+    });
   },
 
   /**

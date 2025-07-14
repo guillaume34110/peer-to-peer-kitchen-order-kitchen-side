@@ -43,6 +43,12 @@ const MenuManager = {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(menu));
       window.menuItems = menu;
       console.log('Menu sauvegardé en localStorage');
+
+      //  TRIGGER : Notifier tous les clients de la mise à jour du menu
+      if (window.WebSocketManager) {
+        window.WebSocketManager.broadcastMenuUpdate();
+      }
+
       return true;
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du menu:', error);
@@ -146,6 +152,13 @@ const MenuManager = {
     if (!item.price || typeof item.price !== 'number') return false;
     if (!item.name || typeof item.name !== 'object') return false;
     if (!item.name.fr || !item.name.th) return false;
+    
+    // Vérifier la structure de la catégorie
+    if (!item.category || typeof item.category !== 'object') return false;
+    if (!item.category.id || typeof item.category.id !== 'string') return false;
+    if (!item.category.name || typeof item.category.name !== 'object') return false;
+    if (!item.category.name.fr || !item.category.name.th) return false;
+    
     if (!item.image || typeof item.image !== 'string') return false;
     if (!item.quantity || typeof item.quantity !== 'object') return false;
     if (typeof item.quantity.amount !== 'number') return false;
@@ -173,6 +186,13 @@ const MenuManager = {
       name: {
         fr: "Nouveau produit",
         th: "สินค้าใหม่"
+      },
+      category: {
+        id: "autre",
+        name: {
+          fr: "Autre",
+          th: "อื่นๆ"
+        }
       },
       image: "https://picsum.photos/300/200",
       quantity: {

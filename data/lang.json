@@ -87,7 +87,16 @@
     "amountReceived": "Montant reçu",
     "noOrdersInProgress": "Aucune commande en cours",
     "impossibleToFind": "Impossible de trouver",
-    "confirmCancelItem": "Annuler"
+    "confirmCancelItem": "Annuler",
+    "filterByCategory": "Filtrer par catégorie",
+    "all": "Tous",
+    "noItemsFound": "Aucun article trouvé",
+    "infinite": "Illimité",
+    "other": "Autre",
+    "newCategory": "Nouvelle catégorie",
+    "categoryName": "Nom de la catégorie",
+    "categoryNameFr": "Nom de la catégorie (Français)",
+    "categoryNameTh": "Nom de la catégorie (Thaï)"
   },
   "th": {
     "kitchen": "ครัว",
@@ -177,6 +186,15 @@
     "amountReceived": "จำนวนเงินที่ได้รับ",
     "noOrdersInProgress": "ไม่มีคำสั่งซื้อที่กำลังดำเนินการ",
     "impossibleToFind": "ไม่สามารถหาได้",
-    "confirmCancelItem": "ยกเลิก"
+    "confirmCancelItem": "ยกเลิก",
+    "filterByCategory": "กรองตามหมวดหมู่",
+    "all": "ทั้งหมด",
+    "noItemsFound": "ไม่พบรายการ",
+    "infinite": "ไม่จำกัด",
+    "other": "อื่นๆ",
+    "newCategory": "หมวดหมู่ใหม่",
+    "categoryName": "ชื่อหมวดหมู่",
+    "categoryNameFr": "ชื่อหมวดหมู่ (ฝรั่งเศส)",
+    "categoryNameTh": "ชื่อหมวดหมู่ (ไทย)"
   }
 } 

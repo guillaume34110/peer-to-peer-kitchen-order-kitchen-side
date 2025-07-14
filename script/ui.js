@@ -221,12 +221,15 @@ const UI = {
           <div class="table-card__total">
             ${I18n.t('total')}: ${I18n.formatPrice(State.getTableTotal(tableNumber))}
           </div>
-          <input type="number" 
-                 id="payment-${tableNumber}" 
-                 placeholder="${I18n.t('amountReceived')}"
-                 min="0"
-                 step="0.01"
-                 oninput="UI.calculateChange(${tableNumber})">
+          <div class="input-with-icon">
+            <input type="number" 
+                   id="payment-${tableNumber}" 
+                   placeholder="${I18n.t('amountReceived')}"
+                   min="0"
+                   step="0.01"
+                   oninput="UI.calculateChange(${tableNumber})">
+            <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon"/>
+          </div>
           <button class="btn btn--danger btn--small" 
                   onclick="UI.clearTable(${tableNumber})" 
                   ${!hasItems ? 'disabled' : ''}>
@@ -370,6 +373,9 @@ const UI = {
     if (!confirm(`${I18n.t('confirmCancelItem')} "${itemName}" ?`)) {
       return;
     }
+
+    // Incrémenter le stock de l'article annulé
+    State.incrementItemStock(item.item.id);
 
     // Supprimer du state par timestamp
     const itemIndex = State.data.orders.findIndex(order => order.timestamp === timestamp);

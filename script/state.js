@@ -34,79 +34,45 @@ const State = {
   },
 
   /**
-   * Sauvegarde simple dans localStorage
-   */
-  saveToStorage() {
-    try {
-      const saveData = {
-        ...this.data,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(saveData));
-      console.log('State sauvegardé:', this.data.orders.length, 'commandes');
-    } catch (error) {
-      console.error('Erreur sauvegarde:', error);
-    }
-  },
-
-  /**
-   * Chargement simple depuis localStorage
+   * Charge l'état depuis localStorage
    */
   loadFromStorage() {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      if (stored) {
-        const loadedData = JSON.parse(stored);
-        
-        // FORCER orders à être un array
-        if (Array.isArray(loadedData.orders)) {
-          this.data.orders = loadedData.orders;
-        } else {
-          console.warn('Format localStorage invalide, reset à []');
-          this.data.orders = [];
-        }
-        
-        // FORCER tablePeople à être un objet
-        if (loadedData.tablePeople && typeof loadedData.tablePeople === 'object') {
-          this.data.tablePeople = loadedData.tablePeople;
-        } else {
-          this.data.tablePeople = {};
-        }
-        
-        console.log('State chargé:', this.data.orders.length, 'commandes');
-        
-        if (this.data.orders.length > 0) {
-          this.notifyListeners('stateLoaded', this.data);
-        }
+      const savedState = localStorage.getItem(this.STORAGE_KEY);
+      if (savedState) {
+        this.data = JSON.parse(savedState);
+        console.log('État chargé depuis localStorage');
       } else {
-        // Pas de storage = array vide
-        this.data.orders = [];
+        console.log('Aucun état sauvegardé trouvé, utilisation de l\'état par défaut');
       }
     } catch (error) {
-      console.error('Erreur chargement:', error);
-      this.data = { orders: [] };
+      console.error('Erreur lors du chargement de l\'état:', error);
     }
   },
 
   /**
-   * Vide le localStorage
+   * Sauvegarde l'état en localStorage
    */
-  clearStorage() {
-    localStorage.removeItem(this.STORAGE_KEY);
-    this.data = { orders: [], tablePeople: {} };
-    console.log('Storage vidé');
+  saveToStorage() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde de l\'état:', error);
+    }
   },
 
   /**
-   * Ajoute un listener pour les changements d'état
-   * @param {Function} callback - Fonction appelée lors des changements
+   * Ajoute un écouteur d'événements
+   * @param {Function} callback - Fonction à appeler lors d'un changement
    */
   addListener(callback) {
-    this.listeners.add(callback);
+    if (typeof callback === 'function') {
+      this.listeners.add(callback);
+    }
   },
 
   /**
-   * Supprime un listener
+   * Supprime un écouteur d'événements
    * @param {Function} callback - Fonction à supprimer
    */
   removeListener(callback) {
@@ -114,18 +80,45 @@ const State = {
   },
 
   /**
-   * Notifie tous les listeners d'un changement
-   * @param {string} type - Type de changement
-   * @param {*} data - Données du changement
+   * Notifie tous les écouteurs d'un changement
+   * @param {string} event - Type d'événement
+   * @param {Object} data - Données associées à l'événement
    */
-  notifyListeners(type, data) {
+  notifyListeners(event, data) {
     this.listeners.forEach(callback => {
       try {
-        callback(type, data);
+        callback(event, data);
       } catch (error) {
-        console.error('Erreur dans un listener:', error);
+        console.error('Erreur dans un écouteur:', error);
       }
     });
+  },
+
+  /**
+   * Obtient tous les articles d'une table
+   * @param {number} tableNumber - Numéro de la table
+   * @returns {Array} Articles de la table
+   */
+  getTableItems(tableNumber) {
+    return this.data.orders.filter(item => item.table === tableNumber);
+  },
+
+  /**
+   * Obtient le nombre d'articles en attente pour une table
+   */
+  getPendingItemsCount(tableNumber) {
+    return this.data.orders.filter(item => 
+      item.table === tableNumber && item.status === 'todo'
+    ).length;
+  },
+
+  /**
+   * Obtient le nombre d'articles terminés pour une table
+   */
+  getCompletedItemsCount(tableNumber) {
+    return this.data.orders.filter(item => 
+      item.table === tableNumber && item.status === 'done'
+    ).length;
   },
 
   /**
@@ -150,6 +143,9 @@ const State = {
 
     console.log('📥 Ajout article:', item.item.name, 'table:', item.table);
     
+    // Décrémenter le stock de l'article
+    this.decrementItemStock(item.item.id);
+    
     // Ajouter à l'array
     this.data.orders.push(item);
     console.log('✅ Article ajouté. Total:', this.data.orders.length);
@@ -159,30 +155,58 @@ const State = {
   },
 
   /**
-   * Supprime un article par nom + table (premier "todo" trouvé)
+   * Décrémenter le stock d'un article
+   * @param {string} itemId - ID de l'article
+   */
+  decrementItemStock(itemId) {
+    const menuItem = MenuManager.getItemById(itemId);
+    
+    if (!menuItem || menuItem.quantity.infinite) {
+      return; // Ne pas décrémenter si l'article n'existe pas ou a un stock infini
+    }
+    
+    if (menuItem.quantity.amount > 0) {
+      menuItem.quantity.amount -= 1;
+      MenuManager.saveMenuToStorage();
+      console.log(`Stock décrémenté pour ${menuItem.name.fr}: ${menuItem.quantity.amount} restants`);
+    } else {
+      console.warn(`Stock épuisé pour ${menuItem.name.fr}`);
+    }
+  },
+
+  /**
+   * Incrémenter le stock d'un article
+   * @param {string} itemId - ID de l'article
+   */
+  incrementItemStock(itemId) {
+    const menuItem = MenuManager.getItemById(itemId);
+    
+    if (!menuItem || menuItem.quantity.infinite) {
+      return; // Ne pas incrémenter si l'article n'existe pas ou a un stock infini
+    }
+    
+    menuItem.quantity.amount += 1;
+    MenuManager.saveMenuToStorage();
+    console.log(`Stock incrémenté pour ${menuItem.name.fr}: ${menuItem.quantity.amount} disponibles`);
+  },
+
+  /**
+   * Supprime un article par nom et table
    */
   removeItemByNameAndTable(itemName, tableNumber) {
-    console.log('🔍 Recherche article à supprimer:', itemName, 'table:', tableNumber);
-    
-    // Chercher le premier article "todo" avec ce nom sur cette table
-    const itemIndex = this.data.orders.findIndex(item => 
+    const index = this.data.orders.findIndex(item => 
       item.table === tableNumber &&
-      item.status === 'todo' &&
       (item.item.name.fr === itemName || item.item.name.th === itemName || item.item.name === itemName)
     );
     
-    if (itemIndex === -1) {
-      console.error('❌ Article non trouvé:', itemName, 'table:', tableNumber);
-      return false;
-    }
+    if (index === -1) return false;
     
-    const item = this.data.orders[itemIndex];
-    console.log('📝 Article trouvé à l\'index', itemIndex, ':', item.item.name);
+    const removedItem = this.data.orders[index];
     
-    // Supprimer l'article
-    const removedItem = this.data.orders.splice(itemIndex, 1)[0];
-    console.log('✅ Article supprimé:', removedItem.item.name);
+    // Incrémenter le stock de l'article annulé
+    this.incrementItemStock(removedItem.item.id);
     
+    this.data.orders.splice(index, 1);
     this.saveToStorage();
     this.notifyListeners('itemRemoved', { itemName, table: tableNumber });
     return true;
@@ -202,6 +226,7 @@ const State = {
     console.log('Changement statut:', itemName, 'table:', tableNumber, '→', status);
     
     // Si l'article passe en "done", juste ajouter le timestamp de validation (sans archiver)
+    // Note: Le stock a déjà été décrémenté lors de l'ajout de l'article, donc on ne le modifie pas ici
     if (status === 'done') {
       item.validatedAt = Date.now(); // Timestamp de validation pour les stats futures
       console.log('📋 Article marqué comme fait (sera archivé à la fin de table):', item.item.name);
@@ -225,6 +250,7 @@ const State = {
     console.log('Changement statut par timestamp:', timestamp, '→', status, 'Article:', item.item.name);
     
     // Si l'article passe en "done", juste ajouter le timestamp de validation (sans archiver)
+    // Note: Le stock a déjà été décrémenté lors de l'ajout de l'article, donc on ne le modifie pas ici
     if (status === 'done') {
       item.validatedAt = Date.now(); // Timestamp de validation pour les stats futures
       console.log('📋 Article marqué comme fait (sera archivé à la fin de table):', item.item.name);
@@ -307,22 +333,6 @@ const State = {
   },
 
   /**
-   * Récupère tous les articles d'une table
-   */
-  getTableItems(tableNumber) {
-    // Protection : s'assurer que orders est un array
-    if (!Array.isArray(this.data.orders)) {
-      console.error('ERREUR: this.data.orders n\'est pas un array:', this.data.orders);
-      this.data.orders = [];
-      return [];
-    }
-    
-    return this.data.orders
-      .filter(item => item.table === tableNumber)
-      .sort((a, b) => a.timestamp - b.timestamp);
-  },
-
-  /**
    * Calcule le total d'une table
    */
   getTableTotal(tableNumber) {
@@ -361,6 +371,14 @@ const State = {
       });
     }
     
+    // Incrémenter le stock pour tous les articles annulés de la table
+    // (on ne le fait pas pour les articles déjà servis/terminés)
+    tableItems.forEach(item => {
+      if (item.status === 'todo') {
+        this.incrementItemStock(item.item.id);
+      }
+    });
+    
     // Supprimer TOUS les articles de cette table (todo et done)
     this.data.orders = this.data.orders.filter(item => item.table !== tableNumber);
     
@@ -369,11 +387,13 @@ const State = {
   },
 
   /**
-   * Récupère toutes les tables avec commandes
+   * Obtient les tables actives
+   * @returns {Array} Numéros des tables actives
    */
   getActiveTables() {
-    const tables = [...new Set(this.data.orders.map(order => order.table))];
-    return tables.sort((a, b) => a - b);
+    const tables = new Set();
+    this.data.orders.forEach(item => tables.add(item.table));
+    return Array.from(tables).sort((a, b) => a - b);
   },
 
   /**
@@ -412,6 +432,13 @@ const State = {
   },
 
   /**
+   * Obtient le nombre de personnes pour une table
+   */
+  getTablePeopleCount(tableNumber) {
+    return this.data.tablePeople[tableNumber] || 0;
+  },
+
+  /**
    * Définit le nombre de personnes pour une table
    * @param {number} tableNumber - Numéro de la table
    * @param {number} peopleCount - Nombre de personnes
@@ -421,15 +448,6 @@ const State = {
     this.saveToStorage();
     this.notifyListeners('tablePeopleChanged', { tableNumber, peopleCount });
     console.log(`Table ${tableNumber}: ${peopleCount} personnes`);
-  },
-
-  /**
-   * Récupère le nombre de personnes pour une table
-   * @param {number} tableNumber - Numéro de la table
-   * @returns {number} Nombre de personnes (0 par défaut)
-   */
-  getTablePeopleCount(tableNumber) {
-    return this.data.tablePeople[tableNumber] || 0;
   },
 
   /**

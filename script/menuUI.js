@@ -4,6 +4,8 @@
  */
 const MenuUI = {
   currentEditingItem: null,
+  activeCategory: 'all', // Pour stocker la catégorie active
+  selectedIngredients: [], // Pour stocker les ingrédients sélectionnés dans le formulaire
 
   /**
    * Initialise l'interface de gestion du menu
@@ -44,6 +46,12 @@ const MenuUI = {
           </button>
         </div>
       </div>
+      <div class="menu-filters">
+        <div class="filter-group" id="category-filters">
+          <span data-i18n="filterByCategory">Filtrer par catégorie :</span>
+          <!-- Les filtres seront générés dynamiquement -->
+        </div>
+      </div>
       <div class="menu-grid" id="menu-grid">
         <!-- Cartes de menu générées dynamiquement -->
       </div>
@@ -75,7 +83,10 @@ const MenuUI = {
             </div>
             <div class="form-group">
               <label for="item-price" data-i18n="price">${I18n.t('price')} :</label>
-              <input type="number" id="item-price" min="0" step="0.01" required>
+              <div class="input-with-icon">
+                <input type="number" id="item-price" min="0" step="0.01" required>
+                <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon"/>
+              </div>
             </div>
           </div>
           
@@ -90,9 +101,17 @@ const MenuUI = {
             </div>
           </div>
           
-          <div class="form-group">
-            <label for="item-image" data-i18n="imageUrl">${I18n.t('imageUrl')} :</label>
-            <input type="url" id="item-image" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="item-category-id" data-i18n="category">${I18n.t('category')} :</label>
+              <select id="item-category-id" required>
+                <!-- Les options seront générées dynamiquement -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="item-image" data-i18n="imageUrl">${I18n.t('imageUrl')} :</label>
+              <input type="url" id="item-image" required>
+            </div>
           </div>
           
           <div class="form-row">
@@ -119,7 +138,10 @@ const MenuUI = {
           
           <div class="form-group">
             <label for="item-supplement-price" data-i18n="supplementPrice">${I18n.t('supplementPrice')} :</label>
-            <input type="number" id="item-supplement-price" min="0" step="0.01" placeholder="0.00">
+            <div class="input-with-icon">
+              <input type="number" id="item-supplement-price" min="0" step="0.01" placeholder="0.00">
+              <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon"/>
+            </div>
           </div>
           
           <div class="image-preview">
@@ -173,6 +195,16 @@ const MenuUI = {
         this.closeEditModal();
       }
     });
+
+    // Gestion des ingrédients
+    document.getElementById('item-ingredients-select')?.addEventListener('change', (e) => {
+      const value = e.target.value;
+      if (value && !this.selectedIngredients.includes(value)) {
+        this.selectedIngredients.push(value);
+        this.updateIngredientsTags();
+        e.target.value = ''; // Réinitialiser le select
+      }
+    });
   },
 
   /**
@@ -181,6 +213,12 @@ const MenuUI = {
   showMenuView() {
     document.getElementById('tables-grid').style.display = 'none';
     document.getElementById('menu-view').style.display = 'block';
+    
+    // Générer les filtres de catégorie
+    this.generateCategoryFilters();
+    
+    // Par défaut, afficher tous les éléments
+    this.activeCategory = 'all';
     this.renderMenuGrid();
   },
 
@@ -193,48 +231,202 @@ const MenuUI = {
   },
 
   /**
-   * Rend la grille des cartes de menu
+   * Génère les filtres de catégorie dynamiquement à partir des données du menu
+   */
+  generateCategoryFilters() {
+    const filterContainer = document.getElementById('category-filters');
+    if (!filterContainer) return;
+    
+    // Vider le conteneur
+    filterContainer.innerHTML = `<span data-i18n="filterByCategory">${I18n.t('filterByCategory')}</span>`;
+    
+    // Ajouter le filtre "Tous"
+    const allButton = document.createElement('button');
+    allButton.id = 'filter-all';
+    allButton.className = 'btn btn--filter active';
+    allButton.dataset.categoryId = 'all';
+    allButton.innerHTML = `<span>${I18n.t('all')}</span>`;
+    allButton.addEventListener('click', () => this.filterByCategory('all'));
+    filterContainer.appendChild(allButton);
+    
+    // Récupérer toutes les catégories uniques du menu
+    const categories = this.getUniqueCategories();
+    
+    // Créer un bouton pour chaque catégorie
+    categories.forEach(category => {
+      const button = document.createElement('button');
+      button.id = `filter-${category.id}`;
+      button.className = 'btn btn--filter';
+      button.dataset.categoryId = category.id;
+      button.innerHTML = `<span>${category.name[I18n.getCurrentLanguage()] || category.name.fr}</span>`;
+      button.addEventListener('click', () => this.filterByCategory(category.id));
+      filterContainer.appendChild(button);
+    });
+    
+    // Mettre à jour le sélecteur de catégorie dans le formulaire
+    this.updateCategorySelect(categories);
+  },
+
+  /**
+   * Récupère toutes les catégories uniques du menu
+   */
+  getUniqueCategories() {
+    const menuItems = MenuManager.getMenuItems();
+    const categoriesMap = {};
+    
+    menuItems.forEach(item => {
+      if (item.category && item.category.id) {
+        categoriesMap[item.category.id] = item.category;
+      }
+    });
+    
+    return Object.values(categoriesMap);
+  },
+
+  /**
+   * Met à jour le sélecteur de catégorie dans le formulaire
+   */
+  updateCategorySelect(categories) {
+    const select = document.getElementById('item-category-id');
+    if (!select) return;
+    
+    select.innerHTML = '';
+    
+    categories.forEach(category => {
+      const option = document.createElement('option');
+      option.value = category.id;
+      option.textContent = category.name[I18n.getCurrentLanguage()] || category.name.fr;
+      select.appendChild(option);
+    });
+    
+    // Ajouter l'option "Autre" si elle n'existe pas déjà
+    if (!categories.find(c => c.id === 'autre')) {
+      const autreOption = document.createElement('option');
+      autreOption.value = 'autre';
+      autreOption.textContent = I18n.t('other');
+      select.appendChild(autreOption);
+    }
+  },
+
+  /**
+   * Filtre les éléments du menu par catégorie
+   */
+  filterByCategory(categoryId) {
+    // Mettre à jour les boutons de filtre
+    const filterButtons = document.querySelectorAll('.btn--filter');
+    filterButtons.forEach(btn => {
+      if (btn.dataset.categoryId === categoryId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Stocker la catégorie active
+    this.activeCategory = categoryId;
+
+    // Rafraîchir la grille
+    this.renderMenuGrid();
+  },
+
+  /**
+   * Affiche la grille des éléments du menu
    */
   renderMenuGrid() {
     const grid = document.getElementById('menu-grid');
     if (!grid) return;
-
+    
+    grid.innerHTML = '';
+    
     const menuItems = MenuManager.getMenuItems();
     
-    grid.innerHTML = menuItems.map(item => this.createMenuCard(item)).join('');
+    // Appliquer le filtre par catégorie
+    const filteredItems = this.activeCategory === 'all' ? 
+      menuItems : 
+      menuItems.filter(item => item.category && item.category.id === this.activeCategory);
     
-    // Rebind les événements après le rendu
+    if (filteredItems.length === 0) {
+      grid.innerHTML = `<p class="empty-message">${I18n.t('noItemsFound')}</p>`;
+      return;
+    }
+    
+    filteredItems.forEach(item => {
+      const card = this.createMenuCard(item);
+      grid.appendChild(card);
+    });
+    
     this.bindCardEvents();
   },
 
   /**
-   * Crée une carte pour un item de menu
+   * Crée une carte pour un élément de menu
    */
   createMenuCard(item) {
-    const currentLang = I18n.getCurrentLanguage();
-    const itemName = item.name[currentLang] || item.name.fr;
+    const card = document.createElement('div');
+    card.className = 'menu-card';
+    card.dataset.id = item.id;
     
-    return `
-      <div class="menu-card" data-item-id="${item.id}">
-        <div class="menu-card__image">
-          <img src="${item.image}" alt="${itemName}" loading="lazy">
-        </div>
-        <div class="menu-card__content">
-          <h3 class="menu-card__title">${itemName}</h3>
-          <div class="menu-card__info">
-            <span class="menu-card__price">${item.price} ฿</span>
-            <span class="menu-card__quantity ${item.quantity.infinite ? 'infinite' : ''}">
-              ${item.quantity.infinite ? '∞' : item.quantity.amount}
-            </span>
-          </div>
-          <div class="menu-card__actions">
-            <button class="btn btn--small btn--primary edit-item" data-item-id="${item.id}">
-              <span data-i18n="edit">✏️ ${I18n.t('edit')}</span>
-            </button>
-          </div>
+    // Ajouter une classe pour la catégorie
+    if (item.category && item.category.id) {
+      card.classList.add(`category-${item.category.id}`);
+    }
+    
+    const stockStatus = item.quantity.infinite ? 
+      `<span class="stock-badge infinite">${I18n.t('infinite')}</span>` : 
+      `<span class="stock-badge ${item.quantity.amount < 5 ? 'low' : ''}">${item.quantity.amount}</span>`;
+    
+    // Obtenir le nom de la catégorie
+    const categoryName = item.category && item.category.name ? 
+      (item.category.name[I18n.getCurrentLanguage()] || item.category.name.fr) : '';
+    
+    card.innerHTML = `
+      <div class="menu-card__image">
+        <img src="${item.image}" alt="${item.name[I18n.getCurrentLanguage()] || item.name.fr}">
+        ${stockStatus}
+        ${categoryName ? `<span class="category-badge">${categoryName}</span>` : ''}
+      </div>
+      <div class="menu-card__content">
+        <h3>${item.name[I18n.getCurrentLanguage()] || item.name.fr}</h3>
+        <div class="menu-card__price">${item.price} ฿</div>
+        <div class="menu-card__ingredients">
+          ${(item.ingredients || []).map(ingId => {
+            const ingredient = window.ingredients.find(ing => ing.id === ingId);
+            if (!ingredient) return '';
+            return `<span class="ingredient-pill" style="background-color: ${this.getRandomColorForId(ingId)}">${ingredient.name[I18n.getCurrentLanguage()] || ingredient.name.fr}</span>`;
+          }).join('')}
         </div>
       </div>
+      <div class="menu-card__actions">
+        <button class="btn btn--icon edit-menu-item" title="${I18n.t('edit')}">✏️</button>
+      </div>
     `;
+    
+    return card;
+  },
+
+  /**
+   * Génère une couleur aléatoire mais cohérente pour un ID donné
+   */
+  getRandomColorForId(id) {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const hue = Math.abs(hash % 360);
+    return `hsla(${hue}, 70%, 80%, 0.8)`;
+  },
+
+  /**
+   * Attache les événements aux cartes du menu
+   */
+  bindCardEvents() {
+    document.querySelectorAll('.edit-menu-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const itemId = e.target.closest('[data-id]').dataset.id;
+        this.openEditModal(itemId);
+      });
+    });
   },
 
   /**
@@ -242,94 +434,136 @@ const MenuUI = {
    */
   openEditModal(itemId = null) {
     const modal = document.getElementById('menu-edit-modal');
-    const title = document.getElementById('edit-modal-title');
-    const duplicateBtn = document.getElementById('duplicate-menu-item');
-    const deleteBtn = document.getElementById('delete-menu-item');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    // Réinitialiser le formulaire
+    document.getElementById('menu-item-form').reset();
+    this.selectedIngredients = [];
+    
+    // Titre du modal
+    document.getElementById('edit-modal-title').textContent = itemId ? 
+      I18n.t('editItem') : I18n.t('addItem');
     
     if (itemId) {
-      // Mode édition
-      this.currentEditingItem = MenuManager.getItemById(itemId);
-      title.textContent = I18n.t('editItem');
-      duplicateBtn.style.display = 'inline-block';
-      deleteBtn.style.display = 'inline-block';
-      this.populateForm(this.currentEditingItem);
+      // Édition d'un item existant
+      const item = MenuManager.getItemById(itemId);
+      if (item) {
+        this.currentEditingItem = item;
+        this.populateForm(item);
+      }
     } else {
-      // Mode création
-      this.currentEditingItem = MenuManager.createNewItem();
-      title.textContent = I18n.t('addItem');
-      duplicateBtn.style.display = 'none';
-      deleteBtn.style.display = 'none';
-      this.populateForm(this.currentEditingItem);
+      // Nouvel item
+      this.currentEditingItem = null;
+      this.populateForm(MenuManager.createNewItem());
     }
-
-    modal.style.display = 'block';
   },
 
   /**
    * Ferme le modal d'édition
    */
   closeEditModal() {
-    document.getElementById('menu-edit-modal').style.display = 'none';
-    this.currentEditingItem = null;
+    const modal = document.getElementById('menu-edit-modal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
   },
 
   /**
    * Remplit le formulaire avec les données d'un item
    */
   populateForm(item) {
-    document.getElementById('item-id').value = item.id;
-    document.getElementById('item-price').value = item.price;
-    document.getElementById('item-name-fr').value = item.name.fr;
-    document.getElementById('item-name-th').value = item.name.th;
-    document.getElementById('item-image').value = item.image;
-    document.getElementById('item-quantity').value = item.quantity.amount;
-    document.getElementById('item-infinite').checked = item.quantity.infinite;
-    document.getElementById('item-supplement-price').value = item.supplementPrice || 0;
-    document.getElementById('image-preview').src = item.image;
+    document.getElementById('item-id').value = item.id || '';
+    document.getElementById('item-id').disabled = !!item.id; // Désactiver l'édition de l'ID pour les items existants
+    document.getElementById('item-price').value = item.price || 0;
+    document.getElementById('item-name-fr').value = item.name?.fr || '';
+    document.getElementById('item-name-th').value = item.name?.th || '';
+    
+    // Catégorie
+    const categorySelect = document.getElementById('item-category-id');
+    if (categorySelect && item.category && item.category.id) {
+      // Vérifier si la catégorie existe dans le select
+      let categoryExists = false;
+      for (let i = 0; i < categorySelect.options.length; i++) {
+        if (categorySelect.options[i].value === item.category.id) {
+          categoryExists = true;
+          break;
+        }
+      }
+      
+      // Si la catégorie n'existe pas, l'ajouter
+      if (!categoryExists) {
+        const option = document.createElement('option');
+        option.value = item.category.id;
+        option.textContent = item.category.name[I18n.getCurrentLanguage()] || item.category.name.fr;
+        categorySelect.appendChild(option);
+      }
+      
+      categorySelect.value = item.category.id;
+    }
+    
+    document.getElementById('item-image').value = item.image || '';
+    document.getElementById('item-quantity').value = item.quantity?.amount || 0;
+    document.getElementById('item-infinite').checked = item.quantity?.infinite || false;
+    document.getElementById('item-supplement-price').value = item.supplementPrice || '';
+    
+    // Prévisualisation de l'image
+    const preview = document.getElementById('image-preview');
+    if (preview) {
+      preview.src = item.image || 'https://picsum.photos/300/200';
+    }
+    
+    // Remplir les ingrédients
+    this.selectedIngredients = [...(item.ingredients || [])];
+    this.updateIngredientsTags();
+  },
 
-    // Gérer les ingrédients (tags)
+  /**
+   * Met à jour l'affichage des tags d'ingrédients
+   */
+  updateIngredientsTags() {
     const tagsContainer = document.getElementById('ingredients-tags');
+    if (!tagsContainer) return;
+    
     tagsContainer.innerHTML = '';
-    const selectedIngredients = item.ingredients || [];
-    selectedIngredients.forEach(ingredientId => {
+    
+    this.selectedIngredients.forEach(ingredientId => {
       const ingredient = window.ingredients.find(ing => ing.id === ingredientId);
       if (!ingredient) return;
+      
       const tag = document.createElement('span');
       tag.className = 'ingredient-tag';
-      tag.setAttribute('data-id', ingredientId);
+      tag.dataset.id = ingredientId;
       tag.textContent = ingredient.name[I18n.getCurrentLanguage()] || ingredient.name.fr;
-      tag.style.backgroundColor = getRandomColorForId(ingredientId);
+      tag.style.backgroundColor = this.getRandomColorForId(ingredientId);
+      
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'remove-tag-btn';
       removeBtn.textContent = '×';
       removeBtn.onclick = () => {
-        // Retirer l'ingrédient du tableau et re-populer
-        const idx = selectedIngredients.indexOf(ingredientId);
-        if (idx !== -1) selectedIngredients.splice(idx, 1);
-        this.populateForm({ ...item, ingredients: selectedIngredients });
+        const idx = this.selectedIngredients.indexOf(ingredientId);
+        if (idx !== -1) {
+          this.selectedIngredients.splice(idx, 1);
+          this.updateIngredientsTags();
+        }
       };
+      
       tag.appendChild(removeBtn);
       tagsContainer.appendChild(tag);
     });
-    // Mettre à jour le select pour ne pas proposer les ingrédients déjà sélectionnés
+    
+    // Mettre à jour le select pour désactiver les options déjà sélectionnées
     const select = document.getElementById('item-ingredients-select');
     if (select) {
       Array.from(select.options).forEach(opt => {
-        if (opt.value && selectedIngredients.includes(opt.value)) {
+        if (opt.value && this.selectedIngredients.includes(opt.value)) {
           opt.disabled = true;
         } else {
           opt.disabled = false;
         }
       });
-      select.value = '';
-      select.onchange = (e) => {
-        const val = e.target.value;
-        if (val && !selectedIngredients.includes(val)) {
-          selectedIngredients.push(val);
-          this.populateForm({ ...item, ingredients: selectedIngredients });
-        }
-      };
     }
   },
 
@@ -337,118 +571,121 @@ const MenuUI = {
    * Collecte les données du formulaire
    */
   collectFormData() {
-    const tagsContainer = document.getElementById('ingredients-tags');
-    const selectedIngredients = Array.from(tagsContainer.querySelectorAll('.ingredient-tag')).map(tag => {
-      // On stocke l'id dans un attribut data-id
-      return tag.getAttribute('data-id') || window.ingredients.find(ing => (ing.name[I18n.getCurrentLanguage()] || ing.name.fr) === tag.textContent.replace('×','').trim())?.id;
-    }).filter(Boolean);
+    const id = document.getElementById('item-id').value;
+    const price = parseFloat(document.getElementById('item-price').value);
+    const nameFr = document.getElementById('item-name-fr').value;
+    const nameTh = document.getElementById('item-name-th').value;
+    const categoryId = document.getElementById('item-category-id').value;
+    const image = document.getElementById('item-image').value;
+    const quantity = parseInt(document.getElementById('item-quantity').value);
+    const infinite = document.getElementById('item-infinite').checked;
+    const supplementPrice = document.getElementById('item-supplement-price').value ? 
+      parseFloat(document.getElementById('item-supplement-price').value) : 0;
+    
+    // Récupérer les informations de catégorie
+    let category;
+    const existingCategories = this.getUniqueCategories();
+    const existingCategory = existingCategories.find(c => c.id === categoryId);
+    
+    if (existingCategory) {
+      category = existingCategory;
+    } else {
+      // Créer une nouvelle catégorie
+      category = {
+        id: categoryId,
+        name: {
+          fr: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
+          th: categoryId
+        }
+      };
+    }
+    
     return {
-      id: document.getElementById('item-id').value,
-      price: parseFloat(document.getElementById('item-price').value),
+      id: id,
+      price: price,
       name: {
-        fr: document.getElementById('item-name-fr').value,
-        th: document.getElementById('item-name-th').value
+        fr: nameFr,
+        th: nameTh
       },
-      image: document.getElementById('item-image').value,
+      category: category,
+      image: image,
       quantity: {
-        amount: parseInt(document.getElementById('item-quantity').value),
-        infinite: document.getElementById('item-infinite').checked
+        amount: quantity,
+        infinite: infinite
       },
-      ingredients: selectedIngredients,
-      supplementPrice: parseFloat(document.getElementById('item-supplement-price').value) || 0
+      ingredients: [...this.selectedIngredients],
+      supplementPrice: supplementPrice,
+      supplements: []
     };
   },
 
   /**
-   * Sauvegarde l'item en cours d'édition
+   * Sauvegarde un item de menu
    */
   saveMenuItem() {
     try {
       const formData = this.collectFormData();
-      const originalId = this.currentEditingItem.id;
-
-      if (originalId === formData.id) {
-        // Mise à jour
-        MenuManager.updateItem(originalId, formData);
+      
+      if (this.currentEditingItem) {
+        // Mise à jour d'un item existant
+        MenuManager.updateItem(this.currentEditingItem.id, formData);
       } else {
-        // L'ID a changé, supprimer l'ancien et créer le nouveau
-        if (originalId.startsWith('item_')) {
-          // Nouvel item
-          MenuManager.addItem(formData);
-        } else {
-          // Renommer un item existant
-          MenuManager.deleteItem(originalId);
-          MenuManager.addItem(formData);
-        }
+        // Nouvel item
+        MenuManager.addItem(formData);
       }
-
-      this.renderMenuGrid();
+      
       this.closeEditModal();
+      this.renderMenuGrid();
       
-      // Réappliquer les traductions après re-rendu
-      I18n.applyTranslations();
-      
-      // Rebind les événements sur les nouvelles cartes
-      this.bindCardEvents();
-      
-      // Mettre à jour l'interface lors du changement de langue
-      this.updateLanguage();
-
+      // Regénérer les filtres de catégorie car ils ont pu changer
+      this.generateCategoryFilters();
     } catch (error) {
-      alert(`Erreur: ${error.message}`);
+      alert(error.message);
     }
   },
 
   /**
-   * Duplique l'item en cours d'édition
+   * Duplique un item de menu
    */
   duplicateMenuItem() {
+    if (!this.currentEditingItem) return;
+    
     try {
-      if (this.currentEditingItem && !this.currentEditingItem.id.startsWith('item_')) {
-        MenuManager.duplicateItem(this.currentEditingItem.id);
-        this.renderMenuGrid();
-        this.closeEditModal();
-        I18n.applyTranslations();
-        this.bindCardEvents();
-      }
+      const formData = this.collectFormData();
+      formData.id = MenuManager.generateUniqueId();
+      
+      MenuManager.addItem(formData);
+      
+      this.closeEditModal();
+      this.renderMenuGrid();
     } catch (error) {
-      alert(`Erreur: ${error.message}`);
+      alert(error.message);
     }
   },
 
   /**
-   * Supprime l'item en cours d'édition
+   * Supprime un item de menu
    */
   deleteMenuItem() {
-    try {
-      if (this.currentEditingItem && !this.currentEditingItem.id.startsWith('item_')) {
-        if (confirm(I18n.t('confirmDelete'))) {
-          MenuManager.deleteItem(this.currentEditingItem.id);
-          this.renderMenuGrid();
-          this.closeEditModal();
-          I18n.applyTranslations();
-          this.bindCardEvents();
-        }
+    if (!this.currentEditingItem) return;
+    
+    if (confirm(I18n.t('confirmDelete'))) {
+      try {
+        MenuManager.deleteItem(this.currentEditingItem.id);
+        
+        this.closeEditModal();
+        this.renderMenuGrid();
+        
+        // Regénérer les filtres de catégorie car ils ont pu changer
+        this.generateCategoryFilters();
+      } catch (error) {
+        alert(error.message);
       }
-    } catch (error) {
-      alert(`Erreur: ${error.message}`);
     }
   },
 
   /**
-   * Attache les événements aux cartes de menu
-   */
-  bindCardEvents() {
-    document.querySelectorAll('.edit-item').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const itemId = e.target.closest('[data-item-id]').dataset.itemId;
-        this.openEditModal(itemId);
-      });
-    });
-  },
-
-  /**
-   * Importe un menu depuis un fichier
+   * Importe un menu
    */
   importMenu() {
     const input = document.createElement('input');
@@ -460,16 +697,17 @@ const MenuUI = {
       if (!file) return;
       
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = (event) => {
         try {
-          const menuData = JSON.parse(e.target.result);
-          MenuManager.importMenu(menuData);
-          this.renderMenuGrid();
-          I18n.applyTranslations();
-          this.bindCardEvents();
-          alert(I18n.t('menuImported'));
+          const menu = JSON.parse(event.target.result);
+          if (Array.isArray(menu)) {
+            MenuManager.importMenu(menu);
+            this.renderMenuGrid();
+            this.generateCategoryFilters();
+            alert(I18n.t('menuImported'));
+          }
         } catch (error) {
-          alert(`Erreur d'importation: ${error.message}`);
+          alert(error.message);
         }
       };
       reader.readAsText(file);
@@ -479,16 +717,16 @@ const MenuUI = {
   },
 
   /**
-   * Exporte le menu actuel
+   * Exporte le menu
    */
   exportMenu() {
-    const menuData = MenuManager.exportMenu();
-    const blob = new Blob([JSON.stringify(menuData, null, 2)], { type: 'application/json' });
+    const menu = MenuManager.exportMenu();
+    const blob = new Blob([JSON.stringify(menu, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `menu_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = 'menu.json';
     a.click();
     
     URL.revokeObjectURL(url);
@@ -501,64 +739,29 @@ const MenuUI = {
     if (confirm(I18n.t('confirmReset'))) {
       MenuManager.resetMenu();
       this.renderMenuGrid();
-      I18n.applyTranslations();
-      this.bindCardEvents();
+      this.generateCategoryFilters();
     }
   },
 
   /**
-   * Met à jour l'interface lors du changement de langue
+   * Met à jour la langue de l'interface
    */
   updateLanguage() {
-    if (document.getElementById('menu-view')?.style.display !== 'none') {
-      this.renderMenuGrid();
-    }
-    
-    // Mettre à jour les tags d'ingrédients si le modal est ouvert
-    if (this.currentEditingItem && document.getElementById('menu-edit-modal')?.style.display !== 'none') {
-      this.updateIngredientsTags();
-    }
-  },
-
-  /**
-   * Met à jour les tags d'ingrédients avec la langue actuelle
-   */
-  updateIngredientsTags() {
-    const tagsContainer = document.getElementById('ingredients-tags');
-    if (!tagsContainer) return;
-
-    const currentLang = I18n.getCurrentLanguage();
-    const tags = tagsContainer.querySelectorAll('.ingredient-tag');
-    
-    tags.forEach(tag => {
-      const ingredientId = tag.getAttribute('data-id') || 
-        window.ingredients.find(ing => (ing.name[currentLang] || ing.name.fr) === tag.textContent.replace('×','').trim())?.id;
-      
-      if (ingredientId) {
-        const ingredient = window.ingredients.find(ing => ing.id === ingredientId);
-        if (ingredient) {
-          // Mettre à jour le texte du tag (sans le bouton ×)
-          const removeBtn = tag.querySelector('.remove-tag-btn');
-          tag.textContent = ingredient.name[currentLang] || ingredient.name.fr;
-          if (removeBtn) {
-            tag.appendChild(removeBtn);
-          }
-        }
+    // Mettre à jour les éléments avec data-i18n
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (key) {
+        el.textContent = I18n.t(key);
       }
     });
+    
+    // Regénérer les filtres de catégorie
+    this.generateCategoryFilters();
+    
+    // Rafraîchir la grille pour mettre à jour les noms
+    this.renderMenuGrid();
   }
 };
 
 // Rendre MenuUI accessible globalement
-window.MenuUI = MenuUI;
-
-// Fonction utilitaire pour couleur aléatoire stable par id
-function getRandomColorForId(id) {
-  // Génère une couleur pastel à partir d'un hash de l'id
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash) % 360;
-  return `hsl(${h}, 70%, 80%)`;
-} 
+window.MenuUI = MenuUI; 

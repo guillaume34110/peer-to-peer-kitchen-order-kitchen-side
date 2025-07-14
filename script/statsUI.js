@@ -36,7 +36,10 @@ const StatsUI = {
         <div class="stats-summary">
           <div class="stats-card">
             <h3 data-i18n="dailyTotal">${I18n.t('dailyTotal')}</h3>
-            <div class="stats-total" id="daily-total">${I18n.formatPrice(0)}</div>
+            <div class="stats-total" id="daily-total">
+                ${I18n.formatPrice(0)}
+                <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon"/>
+            </div>
             <div class="stats-metrics">
               <div class="stats-metric">
                 <span class="metric-label" data-i18n="completedOrders">${I18n.t('completedOrders')}</span>
@@ -48,7 +51,10 @@ const StatsUI = {
               </div>
               <div class="stats-metric">
                 <span class="metric-label" data-i18n="averageTicket">${I18n.t('averageTicket')}</span>
-                <span class="metric-value" id="daily-average">${I18n.formatPrice(0)}</span>
+                <span class="metric-value" id="daily-average">
+                    ${I18n.formatPrice(0)}
+                    <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon"/>
+                </span>
               </div>
               <div class="stats-metric">
                 <span class="metric-label" data-i18n="totalCovers">${I18n.t('totalCovers')}</span>
@@ -179,7 +185,7 @@ const StatsUI = {
     const coversElement = document.getElementById('daily-covers');
     
           if (totalElement) {
-        totalElement.textContent = I18n.formatPrice(stats.totalRevenue);
+        totalElement.innerHTML = `${I18n.formatPrice(stats.totalRevenue)} <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon">`;
       }
     
     if (countElement) {
@@ -191,7 +197,7 @@ const StatsUI = {
     }
     
           if (averageElement) {
-        averageElement.textContent = I18n.formatPrice(stats.averageTicket);
+        averageElement.innerHTML = `${I18n.formatPrice(stats.averageTicket)} <img src="assets/images/fiscal.svg" class="icon" alt="Fiscal icon">`;
       }
     
     if (coversElement) {
