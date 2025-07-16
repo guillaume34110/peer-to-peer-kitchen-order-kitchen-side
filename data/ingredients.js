@@ -194,6 +194,90 @@ const ingredients = [
       fr: "Porc",
       th: "หมู"
     }
+  },
+  {
+    id: "confiture_fraise",
+    name: {
+      fr: "Confiture de fraise",
+      th: "แยมสตรอเบอร์รี่"
+    }
+  },
+  {
+    id: "confiture_mure",
+    name: {
+      fr: "Confiture de mûre",
+      th: "แยมแบล็คเบอร์รี่"
+    }
+  },
+  {
+    id: "confiture_mulberry",
+    name: {
+      fr: "Confiture de mûre (mulberry)",
+      th: "แยมมัลเบอร์รี่"
+    }
+  },
+  {
+    id: "confiture_gingembre",
+    name: {
+      fr: "Confiture de gingembre",
+      th: "แยมขิง"
+    }
+  },
+  {
+    id: "confiture_papaye_passion",
+    name: {
+      fr: "Confiture de papaye passion",
+      th: "แยมมะละกอเสาวรส"
+    }
+  },
+  {
+    id: "confiture_ananas",
+    name: {
+      fr: "Confiture d'ananas",
+      th: "แยมสับปะรด"
+    }
+  },
+  {
+    id: "confiture_ananas_passion",
+    name: {
+      fr: "Confiture d'ananas passion",
+      th: "แยมสับปะรดเสาวรส"
+    }
+  },
+  {
+    id: "confiture_mangue",
+    name: {
+      fr: "Confiture de mangue",
+      th: "แยมมะม่วง"
+    }
+  },
+  {
+    id: "confiture_mangue_passion",
+    name: {
+      fr: "Confiture de mangue passion",
+      th: "แยมมะม่วงเสาวรส"
+    }
+  },
+  {
+    id: "confiture_mangue_verte_citron_vert",
+    name: {
+      fr: "Confiture de mangue verte & citron vert",
+      th: "แยมมะม่วงดิบและมะนาว"
+    }
+  },
+  {
+    id: "confiture_passion",
+    name: {
+      fr: "Confiture de fruit de la passion",
+      th: "แยมเสาวรส"
+    }
+  },
+  {
+    id: "confiture_coco",
+    name: {
+      fr: "Confiture de coco",
+      th: "แยมมะพร้าว"
+    }
   }
 ];
 
