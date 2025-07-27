@@ -183,8 +183,36 @@
             }
         };
 
+        // Protection par mot de passe
+        const checkPassword = () => {
+            const password = prompt('🔐 Entrez le mot de passe pour accéder à l\'interface cuisine :');
+            
+            if (password === null) {
+                // L'utilisateur a cliqué sur Annuler
+                alert('❌ Accès refusé. Le mot de passe est requis.');
+                return false;
+            }
+            
+            if (password === 'kit') {
+                alert('✅ Mot de passe correct ! Bienvenue dans l\'interface cuisine.');
+                return true;
+            } else {
+                alert('❌ Mot de passe incorrect. Veuillez réessayer.');
+                return false;
+            }
+        };
+
         // Initialisation de l'application
         document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier le mot de passe avant d'initialiser l'application
+            if (!checkPassword()) {
+                // Si le mot de passe est incorrect, recharger la page pour permettre une nouvelle tentative
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+                return;
+            }
+            
             await I18n.init();
             await Settings.init();
             MenuManager.init();
