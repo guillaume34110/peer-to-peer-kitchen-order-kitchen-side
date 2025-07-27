@@ -36,13 +36,13 @@ const QRCodeManager = {
       // Essayer de récupérer l'IP locale d'abord
       const localIP = await this.getLocalIP();
       if (localIP && localIP !== '127.0.0.1') {
+        console.log('IP locale détectée:', localIP);
         return localIP;
       }
       
-      // Sinon, essayer de récupérer l'IP externe
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
+      // Si pas d'IP locale, utiliser localhost plutôt que l'IP externe
+      console.warn('Aucune IP locale détectée, utilisation de localhost');
+      return 'localhost';
     } catch (error) {
       console.warn('Impossible de récupérer l\'IP, utilisation de localhost:', error);
       return 'localhost';
@@ -71,9 +71,14 @@ const QRCodeManager = {
         pc.createDataChannel('');
         pc.createOffer().then(offer => pc.setLocalDescription(offer));
         
+        const candidates = [];
+        
         pc.onicecandidate = (ice) => {
           if (!ice || !ice.candidate || !ice.candidate.candidate) {
-            resolve(null);
+            // Fin de la collecte des candidats
+            const bestIP = this.selectBestLocalIP(candidates);
+            resolve(bestIP);
+            pc.close();
             return;
           }
           
@@ -81,25 +86,76 @@ const QRCodeManager = {
           const match = ipRegex.exec(ice.candidate.candidate);
           
           if (match && match[1] && match[1] !== '127.0.0.1') {
-            resolve(match[1]);
-          } else {
-            resolve(null);
+            candidates.push(match[1]);
           }
-          
-          pc.close();
         };
         
-        // Timeout après 1 seconde
+        // Timeout après 2 secondes
         setTimeout(() => {
+          const bestIP = this.selectBestLocalIP(candidates);
+          resolve(bestIP);
           pc.close();
-          resolve(null);
-        }, 1000);
+        }, 2000);
         
       } catch (error) {
         console.warn('Erreur lors de la récupération de l\'IP locale:', error);
         resolve(null);
       }
     });
+  },
+
+  /**
+   * Sélectionne la meilleure IP locale parmi les candidats
+   */
+  selectBestLocalIP(candidates) {
+    if (candidates.length === 0) {
+      return null;
+    }
+    
+    console.log('Candidats IP détectés:', candidates);
+    
+    // Priorité 1: IPs qui commencent par 192.168 (réseau local typique)
+    const local192 = candidates.find(ip => ip.startsWith('192.168.'));
+    if (local192) {
+      console.log('IP 192.168 sélectionnée:', local192);
+      return local192;
+    }
+    
+    // Priorité 2: IPs qui commencent par 10. (réseau local)
+    const local10 = candidates.find(ip => ip.startsWith('10.'));
+    if (local10) {
+      console.log('IP 10.x sélectionnée:', local10);
+      return local10;
+    }
+    
+    // Priorité 3: IPs qui commencent par 172.16-31 (réseau local)
+    const local172 = candidates.find(ip => {
+      const parts = ip.split('.');
+      return parts[0] === '172' && parseInt(parts[1]) >= 16 && parseInt(parts[1]) <= 31;
+    });
+    if (local172) {
+      console.log('IP 172.x sélectionnée:', local172);
+      return local172;
+    }
+    
+    // Priorité 4: Première IP locale trouvée (pas publique)
+    const localIP = candidates.find(ip => {
+      // Exclure les IPs publiques communes
+      return !ip.startsWith('184.') && 
+             !ip.startsWith('8.8.') && 
+             !ip.startsWith('1.1.') &&
+             !ip.startsWith('208.') &&
+             !ip.startsWith('216.');
+    });
+    
+    if (localIP) {
+      console.log('IP locale sélectionnée:', localIP);
+      return localIP;
+    }
+    
+    // Si aucune IP locale appropriée, retourner la première
+    console.log('Aucune IP locale appropriée trouvée, utilisation de la première:', candidates[0]);
+    return candidates[0];
   },
 
   /**
