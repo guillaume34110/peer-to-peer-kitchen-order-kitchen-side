@@ -25,6 +25,9 @@
                 <button id="nav-stats" class="nav-tab" data-i18n="stats">
                     📊 Statistiques
                 </button>
+                <button id="nav-qrcodes" class="nav-tab" data-i18n="qrCodes">
+                    🔗 QR Codes
+                </button>
             </nav>
         </div>
         <div class="header__controls">
@@ -87,6 +90,7 @@
     <script src="script/orderListUI.js"></script>
     <script src="script/statsManager.js"></script>
     <script src="script/statsUI.js"></script>
+    <script src="script/qrCodeManager.js"></script>
     
     <script>
         // Module de navigation entre les vues
@@ -117,6 +121,10 @@
                 
                 document.getElementById('nav-stats')?.addEventListener('click', () => {
                     this.switchToView('stats');
+                });
+                
+                document.getElementById('nav-qrcodes')?.addEventListener('click', () => {
+                    this.switchToView('qrcodes');
                 });
             },
 
@@ -163,6 +171,14 @@
                     document.getElementById('tables-grid').style.display = 'none';
                     StatsUI.showStatsView();
                     this.currentView = 'stats';
+                } else if (view === 'qrcodes') {
+                    MenuUI.hideMenuView();
+                    OrderListUI.hideOrderListView();
+                    IngredientsUI.hideIngredientsView();
+                    StatsUI.hideStatsView();
+                    document.getElementById('tables-grid').style.display = 'none';
+                    QRCodeManager.showQRCodeView();
+                    this.currentView = 'qrcodes';
                 }
             }
         };
@@ -180,6 +196,7 @@
             OrderListUI.init();
             IngredientsUI.init();
             StatsUI.init();
+            QRCodeManager.init();
             AppNavigation.init();
             WebSocketManager.init();
             

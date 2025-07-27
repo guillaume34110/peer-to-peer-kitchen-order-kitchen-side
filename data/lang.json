@@ -96,7 +96,8 @@
     "newCategory": "Nouvelle catégorie",
     "categoryName": "Nom de la catégorie",
     "categoryNameFr": "Nom de la catégorie (Français)",
-    "categoryNameTh": "Nom de la catégorie (Thaï)"
+    "categoryNameTh": "Nom de la catégorie (Thaï)",
+    "qrCodes": "QR Codes"
   },
   "th": {
     "kitchen": "ครัว",
@@ -195,6 +196,7 @@
     "newCategory": "หมวดหมู่ใหม่",
     "categoryName": "ชื่อหมวดหมู่",
     "categoryNameFr": "ชื่อหมวดหมู่ (ฝรั่งเศส)",
-    "categoryNameTh": "ชื่อหมวดหมู่ (ไทย)"
+    "categoryNameTh": "ชื่อหมวดหมู่ (ไทย)",
+    "qrCodes": "QR โค้ด"
   }
 } 
