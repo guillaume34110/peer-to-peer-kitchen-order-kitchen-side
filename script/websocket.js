@@ -280,23 +280,29 @@
   async handleGetMenu(data) {
     const menuItems = window.MenuManager ? MenuManager.getMenuItems() : (window.menuItems || []);
     
-    // Convertir les chemins d'images en Base64
+    // Convertir les chemins d'images en Base64 et s'assurer que les codes de référence sont inclus
     const processedMenuPromises = menuItems.map(async (item) => {
+      // S'assurer que chaque item a son code de référence
+      const itemWithReference = {
+        ...item,
+        reference: item.reference || null // Garantir que le champ reference est présent
+      };
+      
       if (item.image && !item.image.startsWith('data:image')) {
         try {
           const imageAsBase64 = await this.convertImageToBase64(item.image);
-          return { ...item, image: imageAsBase64 };
+          return { ...itemWithReference, image: imageAsBase64 };
         } catch (error) {
           console.warn(`Impossible de charger l'image ${item.image}. Le chemin original sera utilisé.`, error);
-          return item; // En cas d'erreur, renvoyer l'item tel quel
+          return itemWithReference; // En cas d'erreur, renvoyer l'item avec référence
         }
       }
-      return item;
+      return itemWithReference;
     });
 
     const processedMenu = await Promise.all(processedMenuPromises);
     
-    // Renvoyer le menu avec les images encodées
+    // Renvoyer le menu avec les images encodées et les codes de référence
     this.sendMenu(processedMenu);
   },
 

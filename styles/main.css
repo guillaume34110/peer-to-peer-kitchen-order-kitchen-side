@@ -1782,6 +1782,23 @@ body {
   color: var(--text-on-primary);
 }
 
+/* Reference badge */
+.reference-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: var(--gradient-panel-glass);
+  backdrop-filter: var(--effect-glass-blur);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-3d);
+  z-index: 2;
+  color: var(--text-primary);
+  border: 2px solid var(--primary-color);
+}
+
 /* Ingredients pills */
 .menu-card__ingredients {
   display: flex;

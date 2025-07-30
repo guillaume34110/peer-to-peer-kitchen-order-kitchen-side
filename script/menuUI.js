@@ -384,6 +384,7 @@ const MenuUI = {
         <img src="${item.image}" alt="${item.name[I18n.getCurrentLanguage()] || item.name.fr}">
         ${stockStatus}
         ${categoryName ? `<span class="category-badge">${categoryName}</span>` : ''}
+        ${item.reference ? `<span class="reference-badge">${item.reference}</span>` : ''}
       </div>
       <div class="menu-card__content">
         <h3>${item.name[I18n.getCurrentLanguage()] || item.name.fr}</h3>

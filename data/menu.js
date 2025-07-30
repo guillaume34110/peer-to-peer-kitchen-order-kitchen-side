@@ -1,6 +1,7 @@
 const menuItems = [
     {
       id: "cafe",
+      reference: "B1",
       price: 40,
       name: {
         fr: "Café",
@@ -23,6 +24,7 @@ const menuItems = [
     },
     {
       id: "tea",
+      reference: "B2",
       price: 30,
       name: {
         fr: "Thé",
@@ -45,6 +47,7 @@ const menuItems = [
     },
     {
       id: "water",
+      reference: "B3",
       price: 10,
       name: {
         fr: "Eau",
@@ -67,6 +70,7 @@ const menuItems = [
     },
     {
       id: "crepejambonfromageoeuf",
+      reference: "S1",
       price: 110,
       name: {
         fr: "Crêpe jambon fromage oeuf",
@@ -89,6 +93,7 @@ const menuItems = [
     },
     {
       id: "crepechampignonfromageoeuf",
+      reference: "S2",
       price: 110,
       name: {
         fr: "Crêpe champignon fromage oeuf",
@@ -111,6 +116,7 @@ const menuItems = [
     },
     {
       id: "crepesucree",
+      reference: "SU1",
       price: 60,
       name: {
         fr: "Crêpe sucrée",
@@ -133,6 +139,7 @@ const menuItems = [
     },
     {
       id: "crepechocolatbannane",
+      reference: "SU2",
       price: 80,
       name: {
         fr: "Crêpe chocolat banane",
@@ -155,6 +162,7 @@ const menuItems = [
     },
     {
       id: "wrapkapao",
+      reference: "S3",
       price: 140,
       name: {
         fr: "Wrap Pad Kapao",
@@ -177,6 +185,7 @@ const menuItems = [
     },
     {
       id: "massamanwrap",
+      reference: "S4",
       price: 140,
       name: {
         fr: "Wrap Massaman",
@@ -199,6 +208,7 @@ const menuItems = [
     },
     {
       id: "wrapfeta",
+      reference: "S5",
       price: 120,
       name: {
         fr: "Wrap crudités à la feta",
@@ -221,6 +231,7 @@ const menuItems = [
     },
     {
       id: "crepeconfiturefraise",
+      reference: "C1",
       price: 70,
       name: {
         fr: "Crêpe confiture de fraise",
@@ -243,6 +254,7 @@ const menuItems = [
     },
     {
       id: "crepeconfituremure",
+      reference: "C2",
       price: 70,
       name: {
         fr: "Crêpe confiture de mûre",
@@ -265,6 +277,7 @@ const menuItems = [
     },
     {
       id: "crepeconfituremulberry",
+      reference: "C3",
       price: 70,
       name: {
         fr: "Crêpe confiture de mûre (mulberry)",
@@ -287,6 +300,7 @@ const menuItems = [
     },
     {
       id: "crepeconfituregingembre",
+      reference: "C4",
       price: 70,
       name: {
         fr: "Crêpe confiture de gingembre",
@@ -309,6 +323,7 @@ const menuItems = [
     },
     {
       id: "crepeconfiturepapayepassion",
+      reference: "C5",
       price: 70,
       name: {
         fr: "Crêpe confiture papaye passion",
@@ -331,6 +346,7 @@ const menuItems = [
     },
     {
       id: "crepeconfitureananas",
+      reference: "C6",
       price: 70,
       name: {
         fr: "Crêpe confiture d'ananas",
@@ -353,6 +369,7 @@ const menuItems = [
     },
     {
       id: "crepeconfitureananaspassion",
+      reference: "C7",
       price: 70,
       name: {
         fr: "Crêpe confiture ananas passion",
@@ -375,6 +392,7 @@ const menuItems = [
     },
     {
       id: "crepeconfituremangue",
+      reference: "C8",
       price: 70,
       name: {
         fr: "Crêpe confiture de mangue",
@@ -397,6 +415,7 @@ const menuItems = [
     },
     {
       id: "crepeconfituremanguepassion",
+      reference: "C9",
       price: 70,
       name: {
         fr: "Crêpe confiture mangue passion",
@@ -419,6 +438,7 @@ const menuItems = [
     },
     {
       id: "crepeconfituremanguevertecitronvert",
+      reference: "C10",
       price: 70,
       name: {
         fr: "Crêpe confiture mangue verte & citron vert",
@@ -441,6 +461,7 @@ const menuItems = [
     },
     {
       id: "crepeconfiturepassion",
+      reference: "C11",
       price: 70,
       name: {
         fr: "Crêpe confiture de fruit de la passion",
@@ -463,6 +484,7 @@ const menuItems = [
     },
     {
       id: "crepeconfiturecoco",
+      reference: "C12",
       price: 70,
       name: {
         fr: "Crêpe confiture de coco",
@@ -487,7 +509,11 @@ const menuItems = [
   
   export const getMenuItemById = (id) => {
     return menuItems.find(item => item.id === id);
-  }; 
+  };
+
+  export const getMenuItemByReference = (reference) => {
+    return menuItems.find(item => item.reference === reference);
+  };
 
   // Rendre menuItems accessible globalement pour les autres scripts
   window.menuItems = menuItems; 
