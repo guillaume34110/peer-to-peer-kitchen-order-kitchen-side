@@ -102,6 +102,23 @@ const ingredients = [
     }
   },
   {
+    id: "poivre",
+    name: {
+      fr: "Poivre",
+      th: "พริกไทย",
+      en: "Pepper",
+      de: "Pfeffer",
+      ja: "コショウ",
+      zh: "胡椒",
+      ru: "Перец",
+      ko: "후추",
+      es: "Pimienta",
+      it: "Pepe",
+      nl: "Peper",
+      pt: "Pimenta"
+    }
+  },
+  {
     id: "jambon",
     name: {
       fr: "Jambon",
@@ -357,6 +374,23 @@ const ingredients = [
     }
   },
   {
+    id: "sauce_soja",
+    name: {
+      fr: "Sauce soja",
+      th: "ซอสถั่วเหลือง",
+      en: "Soy Sauce",
+      de: "Sojasauce",
+      ja: "醤油",
+      zh: "酱油",
+      ru: "Соевый соус",
+      ko: "간장",
+      es: "Salsa de soja",
+      it: "Salsa di soia",
+      nl: "Sojasaus",
+      pt: "Molho de soja"
+    }
+  },
+  {
     id: "boeuf",
     name: {
       fr: "Bœuf",
@@ -405,6 +439,23 @@ const ingredients = [
       it: "Arachidi",
       nl: "Pinda's",
       pt: "Amendoins"
+    }
+  },
+  {
+    id: "curry_jaune",
+    name: {
+      fr: "Curry jaune",
+      th: "แกงกะหรี่เหลือง",
+      en: "Yellow Curry",
+      de: "Gelbes Curry",
+      ja: "イエローカレー",
+      zh: "黄咖喱",
+      ru: "Жёлтое карри",
+      ko: "옐로 커리",
+      es: "Curry amarillo",
+      it: "Curry giallo",
+      nl: "Gele curry",
+      pt: "Curry amarelo"
     }
   },
   {
@@ -459,6 +510,57 @@ const ingredients = [
     }
   },
   {
+    id: "salade",
+    name: {
+      fr: "Salade",
+      th: "สลัด",
+      en: "Salad",
+      de: "Salat",
+      ja: "サラダ",
+      zh: "沙拉",
+      ru: "Салат",
+      ko: "샐러드",
+      es: "Ensalada",
+      it: "Insalata",
+      nl: "Salade",
+      pt: "Salada"
+    }
+  },
+  {
+    id: "tomates",
+    name: {
+      fr: "Tomates",
+      th: "มะเขือเทศ",
+      en: "Tomatoes",
+      de: "Tomaten",
+      ja: "トマト",
+      zh: "番茄",
+      ru: "Помидоры",
+      ko: "토마토",
+      es: "Tomates",
+      it: "Pomodori",
+      nl: "Tomaten",
+      pt: "Tomates"
+    }
+  },
+  {
+    id: "vinaigrette",
+    name: {
+      fr: "Vinaigrette",
+      th: "น้ำสลัด",
+      en: "Vinaigrette",
+      de: "Vinaigrette",
+      ja: "ビネグレットソース",
+      zh: "油醋汁",
+      ru: "Винегретная заправка",
+      ko: "비네그레트 드레싱",
+      es: "Vinagreta",
+      it: "Vinaigrette",
+      nl: "Vinaigrette",
+      pt: "Vinagrete"
+    }
+  },
+  {
     id: "porc",
     name: {
       fr: "Porc",
@@ -473,6 +575,23 @@ const ingredients = [
       it: "Maiale",
       nl: "Varkensvlees",
       pt: "Carne de porco"
+    }
+  },
+  {
+    id: "porc_hache",
+    name: {
+      fr: "Porc haché",
+      th: "หมูสับ",
+      en: "Minced Pork",
+      de: "Schweinehackfleisch",
+      ja: "豚ひき肉",
+      zh: "猪肉末",
+      ru: "Свиной фарш",
+      ko: "간 돼지고기",
+      es: "Carne de cerdo picada",
+      it: "Maiale macinato",
+      nl: "Gehakt varkensvlees",
+      pt: "Carne de porco moída"
     }
   },
   {
